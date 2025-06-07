@@ -28,12 +28,13 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   const [callHistory, setCallHistory] = useState<Appel[]>([]);
   const [commentaire, setCommentaire] = useState<Record<string, string>>({});
   const [editMode, setEditMode] = useState<Record<string, boolean>>({});
-  const [editValues, setEditValues] = useState<
-    Record<string, Partial<Contact>>
-  >({});
+  const [editValues, setEditValues] = useState<Record<string, Partial<Contact>>>({});
 
+  // Rafraîchissement automatique toutes les 4 secondes
   useEffect(() => {
     fetchData();
+    const interval = setInterval(fetchData, 4000);
+    return () => clearInterval(interval);
   }, [agentId]);
 
   const fetchData = async () => {

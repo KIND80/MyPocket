@@ -74,7 +74,8 @@ export default function DashboardAdmin() {
         const a_valider = contacts.filter(
           (c) => c.agent_id === agent.id && c.statut === "à_valider"
         ).length;
-        const taux_signature = total_appels > 0 ? (signatures / total_appels) * 100 : 0;
+        const taux_signature =
+          total_appels > 0 ? (signatures / total_appels) * 100 : 0;
 
         return {
           id: agent.id,
@@ -128,7 +129,23 @@ export default function DashboardAdmin() {
     fetchUser();
   }, []);
 
-  const validerContact = async (id: string) => {
+  // *** CORRECTION PRINCIPALE ICI ***
+  // Valider => assigne définitivement à l'agent (statut "assigné" + visible_globally: false)
+  const validerContact = async (id: string, agentId: string) => {
+    await supabase
+      .from("contacts")
+      .update({
+        statut: "assigné",
+        agent_id: agentId,
+        visible_globally: false,
+      })
+      .eq("id", id);
+
+    setContactsAValider((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  // Refuser => retourne dans le portefeuille global, non assigné
+  const archiverContact = async (id: string) => {
     await supabase
       .from("contacts")
       .update({
@@ -136,18 +153,6 @@ export default function DashboardAdmin() {
         agent_id: null,
         rdv_date: null,
         visible_globally: true,
-      })
-      .eq("id", id);
-
-    setContactsAValider((prev) => prev.filter((c) => c.id !== id));
-  };
-
-  const archiverContact = async (id: string) => {
-    await supabase
-      .from("contacts")
-      .update({
-        statut: "archivé",
-        visible_globally: false,
       })
       .eq("id", id);
 
@@ -319,7 +324,7 @@ export default function DashboardAdmin() {
                     )}
                     <div style={{ marginTop: 10 }}>
                       <button
-                        onClick={() => validerContact(c.id)}
+                        onClick={() => validerContact(c.id, c.agent_id)}
                         style={actionBtnStyle("#4CAF50")}
                       >
                         ✅ Valider

@@ -103,10 +103,12 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     nextContact();
   };
 
+  // ==> C'est ici qu'on ajoute le LOG <==
   const handleRdv = async () => {
     if (!current || !commentaire.trim()) return;
     await enregistrerAppel("rdv", commentaire.trim());
-    await supabase
+
+    const { error, data } = await supabase
       .from("contacts")
       .update({
         agent_id: agentId,
@@ -114,6 +116,14 @@ export default function AppelContact({ agentId }: { agentId: string }) {
         visible_globally: false,
       })
       .eq("id", current.id);
+
+    console.log("Résultat UPDATE contact RDV :", {
+      error,
+      data,
+      agentId,
+      contactId: current.id,
+    });
+
     window.open(
       `https://calendar.google.com/calendar/u/0/r/eventedit?text=RDV+${current.nom}&details=Tel:+${current.telephone}`,
       "_blank"
