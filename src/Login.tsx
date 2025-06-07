@@ -67,38 +67,34 @@ export default function Login({
   };
 
   return (
-    <div className="container text-center" style={{ maxWidth: 400 }}>
-      <h1 style={{ marginBottom: 10 }}>
-        👋 Bienvenue sur <strong>MyPocket</strong>
-      </h1>
-      <p style={{ color: "#555", marginBottom: 30 }}>
-        Votre outil intelligent pour la gestion des contacts et le phoning
-        efficace.
+    <div className="max-w-sm mx-auto p-6 text-center">
+      <h1 className="text-2xl font-bold mb-2">👋 Bienvenue sur <span className="text-blue-600">MyPocket</span></h1>
+      <p className="text-gray-600 mb-6">
+        Votre outil intelligent pour la gestion des contacts et le phoning efficace.
       </p>
 
-      <h2>🔐 Connexion</h2>
+      <h2 className="text-lg font-semibold mb-4">🔐 Connexion</h2>
 
-      <form onSubmit={handleLogin}>
+      <form onSubmit={handleLogin} className="space-y-3">
         <input
           type="email"
           placeholder="Email"
+          className="w-full px-3 py-2 border rounded"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          style={{ width: "100%", marginBottom: 10 }}
         />
         <input
           type="password"
           placeholder="Mot de passe"
+          className="w-full px-3 py-2 border rounded"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          style={{ width: "100%", marginBottom: 10 }}
         />
         <button
           type="submit"
-          className="btn"
-          style={{ width: "100%" }}
+          className="w-full bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition"
           disabled={loading}
         >
           {loading ? "Connexion en cours..." : "Se connecter"}
@@ -107,25 +103,23 @@ export default function Login({
 
       <button
         onClick={handlePasswordReset}
-        className="btn btn-gray"
-        style={{ marginTop: 10, width: "100%" }}
+        className="mt-3 w-full bg-gray-300 text-gray-800 font-semibold py-2 rounded hover:bg-gray-400"
       >
         🔁 Réinitialiser mot de passe
       </button>
 
-      {errorMsg && <p style={{ color: "red", marginTop: 15 }}>{errorMsg}</p>}
+      {errorMsg && <p className="text-red-600 mt-3">{errorMsg}</p>}
       {resetSent && (
-        <p style={{ color: "green", marginTop: 15 }}>
-          Lien de réinitialisation envoyé.
+        <p className="text-green-600 mt-3">
+          ✅ Lien de réinitialisation envoyé.
         </p>
       )}
 
       <button
         onClick={() => document.body.classList.toggle("dark-mode")}
-        className="btn btn-gray"
-        style={{ marginTop: 30 }}
+        className="mt-8 w-full bg-gray-700 text-white font-semibold py-2 rounded hover:bg-gray-800"
       >
-        🌗 Mode sombre
+        🌗 Activer/Désactiver le mode sombre
       </button>
     </div>
   );

@@ -1,4 +1,3 @@
-// début du fichier
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
@@ -38,13 +37,13 @@ export default function AppelContact({ agentId }: { agentId: string }) {
 
   useEffect(() => {
     const fetchData = async () => {
-      const response = await supabase
+      const { data } = await supabase
         .from("contacts")
         .select("*")
         .eq("statut", "non_assigné")
         .eq("visible_globally", true);
-      setContacts(response.data || []);
-      setFiltered(response.data || []);
+      setContacts(data || []);
+      setFiltered(data || []);
     };
     fetchData();
   }, []);
@@ -59,25 +58,24 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     if (categorie) {
       filtres = filtres.filter((c) => c.categorie_contact === categorie);
     }
-
     setFiltered(filtres);
     if (!search && filtres.length > 0) {
       const rand = filtres[Math.floor(Math.random() * filtres.length)];
       setCurrent(rand);
-      setForm(rand); // init formulaire
+      setForm(rand); // init form
     }
   }, [search, categorie, contacts]);
 
   useEffect(() => {
     const fetchHistorique = async () => {
       if (!current) return;
-      const response = await supabase
+      const { data } = await supabase
         .from("call_history")
         .select("id, date, statut_appel, commentaire")
         .eq("contact_id", current.id)
         .order("date", { ascending: false })
         .limit(3);
-      setHistorique(response.data || []);
+      setHistorique(data || []);
     };
     fetchHistorique();
   }, [current]);
@@ -88,9 +86,9 @@ export default function AppelContact({ agentId }: { agentId: string }) {
   };
 
   const enregistrerAppel = async (
-    statut: "signature" | "non_signature",
+    statut: "signature" | "non_signature" | "rdv" | "appel" | "injoignable",
     commentaireFinal: string
-  ) => {
+  ): Promise<void> => {
     if (!current) return;
     await supabase.from("call_history").insert({
       contact_id: current.id,
@@ -107,7 +105,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
 
   const handleRdv = async () => {
     if (!current || !commentaire.trim()) return;
-    await enregistrerAppel("signature", commentaire.trim());
+    await enregistrerAppel("rdv", commentaire.trim());
     await supabase
       .from("contacts")
       .update({
@@ -116,12 +114,10 @@ export default function AppelContact({ agentId }: { agentId: string }) {
         visible_globally: false,
       })
       .eq("id", current.id);
-
     window.open(
       `https://calendar.google.com/calendar/u/0/r/eventedit?text=RDV+${current.nom}&details=Tel:+${current.telephone}`,
       "_blank"
     );
-
     nextContact();
   };
 
@@ -153,194 +149,168 @@ export default function AppelContact({ agentId }: { agentId: string }) {
 
   if (!current) {
     return (
-      <p style={{ textAlign: "center", padding: "40px 20px" }}>
-        📴 Aucun contact pour le moment. Revenez demain.
+      <p className="text-center py-10">
+        📭 Aucun contact pour le moment. Revenez plus tard.
       </p>
     );
   }
 
-  const avatarUrl = `https://avatars.dicebear.com/api/initials/${encodeURIComponent(
+  const avatarUrl = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(
     current.nom || "Contact"
-  )}.svg`;
+  )}`;
 
   return (
-    <div
-      style={{
-        fontFamily: "Segoe UI",
-        padding: 16,
-        maxWidth: 800,
-        margin: "0 auto",
-      }}
-    >
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 20,
-        }}
-      >
-        <h2 style={{ fontSize: "1.5rem" }}>📂 Portefeuille Global</h2>
-        <button onClick={handleLogout} style={btn("gray")}>
+    <div className="max-w-3xl mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">📂 Portefeuille Global</h2>
+        <button
+          onClick={handleLogout}
+          className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+        >
           🔓 Déconnexion
         </button>
-      </header>
+      </div>
 
-      <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+      <div className="flex flex-col gap-2 mb-4 sm:flex-row">
         <input
           type="text"
-          placeholder="🔍 Rechercher numéro"
+          placeholder="🔍 Rechercher un numéro"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={inputStyle}
+          className="flex-1 px-3 py-2 border rounded"
         />
         <select
           value={categorie}
           onChange={(e) => setCategorie(e.target.value)}
-          style={inputStyle}
+          className="flex-1 px-3 py-2 border rounded"
         >
-          <option value="">Catégorie</option>
+          <option value="">Toutes les catégories</option>
           <option value="phoning">Phoning</option>
           <option value="subside">Subside</option>
         </select>
       </div>
 
-      <div style={card}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <div
-            style={{ display: "flex", alignItems: "center", marginBottom: 16 }}
-          >
+      <div className="bg-white p-4 rounded-lg shadow space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <img
               src={avatarUrl}
               alt="avatar"
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: "50%",
-                marginRight: 12,
-              }}
+              className="w-14 h-14 rounded-full"
             />
             <div>
               {edition ? (
                 <input
                   value={form.nom || ""}
                   onChange={(e) => setForm({ ...form, nom: e.target.value })}
-                  style={{ ...inputStyle, width: 150 }}
+                  className="border rounded px-2 py-1"
                 />
               ) : (
                 <>
-                  <h3 style={{ margin: 0 }}>{current.nom}</h3>
-                  <small style={{ color: "#666" }}>{current.telephone}</small>
+                  <h3 className="text-lg font-semibold">{current.nom}</h3>
+                  <p className="text-sm text-gray-600">{current.telephone}</p>
                 </>
               )}
             </div>
           </div>
-          <button onClick={() => setEdition(!edition)} style={btn("gray")}>
-            ✏️
+          <button
+            onClick={() => setEdition(!edition)}
+            className="text-sm text-gray-600 hover:text-black"
+          >
+            ✏️ Modifier
           </button>
         </div>
 
         {edition ? (
           <>
-            <input
-              placeholder="Téléphone"
-              value={form.telephone || ""}
-              onChange={(e) => setForm({ ...form, telephone: e.target.value })}
-              style={{ ...inputStyle, marginBottom: 8 }}
-            />
-            <input
-              placeholder="Adresse"
-              value={form.adresse || ""}
-              onChange={(e) => setForm({ ...form, adresse: e.target.value })}
-              style={{ ...inputStyle, marginBottom: 8 }}
-            />
-            <input
-              placeholder="NPA"
-              value={form.npa || ""}
-              onChange={(e) => setForm({ ...form, npa: e.target.value })}
-              style={{ ...inputStyle, marginBottom: 8 }}
-            />
-            <input
-              placeholder="Canton"
-              value={form.canton || ""}
-              onChange={(e) => setForm({ ...form, canton: e.target.value })}
-              style={{ ...inputStyle, marginBottom: 8 }}
-            />
-            <input
-              placeholder="Type assurance"
-              value={form.type_assurance || ""}
-              onChange={(e) =>
-                setForm({ ...form, type_assurance: e.target.value })
-              }
-              style={{ ...inputStyle, marginBottom: 8 }}
-            />
-            <button onClick={handleUpdateContact} style={btn("green")}>
+            {["telephone", "adresse", "npa", "canton", "type_assurance"].map(
+              (field) => (
+                <input
+                  key={field}
+                  placeholder={field}
+                  value={form[field as keyof Contact] || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, [field]: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border rounded mb-2"
+                />
+              )
+            )}
+            <button
+              onClick={handleUpdateContact}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
               ✅ Sauvegarder
             </button>
           </>
         ) : (
-          <>
+          <div className="text-sm space-y-1">
             <p>
-              <strong>📍 Adresse :</strong> {current.adresse}, {current.npa}
+              📍 Adresse : {current.adresse}, {current.npa}
             </p>
-            <p>
-              <strong>🏷️ Catégorie :</strong> {current.categorie_contact}
-            </p>
-            <p>
-              <strong>🌍 Canton :</strong> {current.canton}
-            </p>
-            <p>
-              <strong>🛡️ Assurance :</strong> {current.type_assurance || "—"}
-            </p>
-          </>
+            <p>🏷️ Catégorie : {current.categorie_contact}</p>
+            <p>🌍 Canton : {current.canton}</p>
+            <p>🛡️ Assurance : {current.type_assurance || "—"}</p>
+          </div>
         )}
 
+        {/* Étapes d'appel */}
         {etatAppel === "init" && (
-          <div style={{ marginTop: 12 }}>
+          <div className="space-x-2">
             <a href={`tel:${current.telephone}`}>
               <button
                 onClick={() => setEtatAppel("en_cours")}
-                style={btn("blue")}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               >
                 📞 Appeler
               </button>
             </a>
-            <button onClick={nextContact} style={btn("gray")}>
+            <button
+              onClick={nextContact}
+              className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            >
               ⏭️ Passer
             </button>
           </div>
         )}
 
         {etatAppel === "en_cours" && (
-          <div style={{ marginTop: 12 }}>
-            <button onClick={handleInjoignable} style={btn("red")}>
+          <div className="space-x-2">
+            <button
+              onClick={handleInjoignable}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            >
               ❌ Injoignable
             </button>
-            <button onClick={() => setEtatAppel("oui")} style={btn("green")}>
+            <button
+              onClick={() => setEtatAppel("oui")}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            >
               ✅ Oui
             </button>
           </div>
         )}
 
         {etatAppel === "oui" && (
-          <div style={{ marginTop: 12 }}>
+          <div>
             <textarea
               value={commentaire}
               onChange={(e) => setCommentaire(e.target.value)}
               placeholder="📝 Ajouter un commentaire"
-              style={{ ...inputStyle, height: 80 }}
+              className="w-full px-3 py-2 border rounded mb-2"
             />
-            <div style={{ marginTop: 8 }}>
+            <div className="space-x-2">
               <button
                 onClick={handleRdv}
                 disabled={!commentaire.trim()}
-                style={btn("blue")}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
               >
                 📅 RDV
               </button>
               <button
                 onClick={handleValiderCommentaire}
                 disabled={!commentaire.trim()}
-                style={btn("gray")}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 disabled:opacity-50"
               >
                 📝 Valider
               </button>
@@ -348,13 +318,14 @@ export default function AppelContact({ agentId }: { agentId: string }) {
           </div>
         )}
 
+        {/* Historique */}
         {historique.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <h4>📞 Derniers appels</h4>
-            <ul style={{ paddingLeft: 20 }}>
+          <div>
+            <h4 className="font-semibold mb-2">📞 Derniers appels</h4>
+            <ul className="text-sm list-disc list-inside space-y-1">
               {historique.map((appel) => (
                 <li key={appel.id}>
-                  📅 {new Date(appel.date).toLocaleDateString("fr-FR")} —{" "}
+                  {new Date(appel.date).toLocaleDateString("fr-FR")} —{" "}
                   {appel.statut_appel}
                   <br />
                   📝 {appel.commentaire}
@@ -367,37 +338,3 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 6,
-  border: "1px solid #ccc",
-  fontSize: "1rem",
-};
-
-const btn = (color: "blue" | "green" | "red" | "gray") => {
-  const colors: any = {
-    blue: "#1976d2",
-    green: "#4caf50",
-    red: "#f44336",
-    gray: "#888",
-  };
-  return {
-    backgroundColor: colors[color],
-    color: "#fff",
-    padding: "10px 14px",
-    marginRight: 8,
-    border: "none",
-    borderRadius: 6,
-    fontWeight: "bold",
-    cursor: "pointer",
-  } as React.CSSProperties;
-};
-
-const card: React.CSSProperties = {
-  border: "1px solid #ddd",
-  borderRadius: 10,
-  padding: 20,
-  backgroundColor: "#fff",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-};

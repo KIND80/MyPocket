@@ -10,6 +10,7 @@ type AgentStat = {
   signatures: number;
   non_signatures: number;
   a_valider: number;
+  taux_signature: number; // nouveau champ %
 };
 
 type Contact = {
@@ -43,6 +44,7 @@ export default function DashboardAdmin() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [appelHistory, setAppelHistory] = useState<Appel[]>([]);
   const [activeTab, setActiveTab] = useState<"stats" | "historique">("stats");
+  const [userName, setUserName] = useState<string>("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,6 +74,7 @@ export default function DashboardAdmin() {
         const a_valider = contacts.filter(
           (c) => c.agent_id === agent.id && c.statut === "à_valider"
         ).length;
+        const taux_signature = total_appels > 0 ? (signatures / total_appels) * 100 : 0;
 
         return {
           id: agent.id,
@@ -81,6 +84,7 @@ export default function DashboardAdmin() {
           signatures,
           non_signatures,
           a_valider,
+          taux_signature,
         };
       });
 
@@ -98,8 +102,30 @@ export default function DashboardAdmin() {
       if (data) setContactsAValider(data);
     };
 
+    const fetchUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Erreur récupération utilisateur :", error.message);
+      } else {
+        setUserName(data?.name || data?.prenom || "Admin");
+      }
+    };
+
     fetchData();
     fetchContactsAValider();
+    fetchUser();
   }, []);
 
   const validerContact = async (id: string) => {
@@ -128,10 +154,10 @@ export default function DashboardAdmin() {
     setContactsAValider((prev) => prev.filter((c) => c.id !== id));
   };
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) alert("Erreur lors de la déconnexion : " + error.message);
-  };
+  // Top 3 agents par taux de signature
+  const topPerformers = [...stats]
+    .sort((a, b) => b.taux_signature - a.taux_signature)
+    .slice(0, 3);
 
   return (
     <div
@@ -152,12 +178,45 @@ export default function DashboardAdmin() {
         }}
       >
         <h1 style={{ fontSize: "1.6rem", marginBottom: 10 }}>
-          👑 Tableau de bord Admin
+          👑 Tableau de bord Admin — Bonjour {userName}
         </h1>
-        <button onClick={handleLogout} style={actionBtnStyle("#f44336")}>
+        <button onClick={() => supabase.auth.signOut()} style={actionBtnStyle("#f44336")}>
           🔒 Déconnexion
         </button>
       </header>
+
+      <section style={{ marginBottom: 30 }}>
+        <h2>🏆 Top 3 Agents par taux de signature</h2>
+        {topPerformers.length === 0 ? (
+          <p>Aucun agent disponible.</p>
+        ) : (
+          <ul style={{ display: "flex", gap: 20, padding: 0, listStyle: "none" }}>
+            {topPerformers.map((agent) => (
+              <li
+                key={agent.id}
+                style={{
+                  backgroundColor: "#e6f4ea",
+                  borderRadius: 8,
+                  padding: 15,
+                  flex: "1 1 0",
+                  boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                }}
+              >
+                <div style={{ fontWeight: "bold", fontSize: 18 }}>{agent.name}</div>
+                <div>Email : {agent.email}</div>
+                <div>
+                  Taux de signature :{" "}
+                  <span style={{ fontWeight: "bold" }}>
+                    {agent.taux_signature.toFixed(1)}%
+                  </span>
+                </div>
+                <div>Appels : {agent.total_appels}</div>
+                <div>À valider : {agent.a_valider}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div style={{ marginBottom: 20 }}>
         <button
@@ -188,6 +247,7 @@ export default function DashboardAdmin() {
                 <th style={cellStyle}>Signatures</th>
                 <th style={cellStyle}>Non signatures</th>
                 <th style={cellStyle}>À valider</th>
+                <th style={cellStyle}>Taux signature %</th>
               </tr>
             </thead>
             <tbody>
@@ -199,6 +259,7 @@ export default function DashboardAdmin() {
                   <td style={cellStyle}>{agent.signatures}</td>
                   <td style={cellStyle}>{agent.non_signatures}</td>
                   <td style={cellStyle}>{agent.a_valider}</td>
+                  <td style={cellStyle}>{agent.taux_signature.toFixed(1)}%</td>
                 </tr>
               ))}
             </tbody>

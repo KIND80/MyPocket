@@ -5,7 +5,7 @@ import DashboardAdmin from "./DashboardAdmin";
 import AgentHome from "./AgentHome";
 
 export default function App() {
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<"admin" | "agent" | null>(null);
   const [userId, setUserId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -15,29 +15,33 @@ export default function App() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (session?.user) {
+      const user = session?.user;
+      if (user?.id) {
         const { data: userData } = await supabase
           .from("users")
           .select("role")
-          .eq("id", session.user.id)
+          .eq("id", user.id)
           .single();
 
-        setRole(userData?.role || null);
-        setUserId(session.user.id);
+        if (userData?.role === "admin" || userData?.role === "agent") {
+          setRole(userData.role);
+          setUserId(user.id);
+        } else {
+          setRole(null);
+        }
       }
+
       setLoading(false);
     };
 
     checkSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (!session) {
-          setRole(null);
-          setUserId("");
-        }
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setRole(null);
+        setUserId("");
       }
-    );
+    });
 
     return () => {
       listener.subscription.unsubscribe();
@@ -46,14 +50,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          paddingTop: 100,
-          textAlign: "center",
-          fontFamily: "Arial",
-        }}
-      >
-        <h2>Chargement en cours...</h2>
+      <div className="h-screen flex items-center justify-center">
+        <h2 className="text-lg font-semibold text-gray-600">Chargement en cours...</h2>
       </div>
     );
   }
@@ -62,33 +60,22 @@ export default function App() {
     return (
       <Login
         onLogin={(r, id) => {
-          setRole(r);
+          setRole(r as "admin" | "agent");
           setUserId(id);
         }}
       />
     );
   }
 
-  if (role === "admin") {
-    return <DashboardAdmin />;
-  }
-
-  if (role === "agent") {
-    return <AgentHome agentId={userId} />;
-  }
+  if (role === "admin") return <DashboardAdmin />;
+  if (role === "agent") return <AgentHome agentId={userId} />;
 
   return (
-    <div
-      style={{
-        paddingTop: 100,
-        textAlign: "center",
-        fontFamily: "Arial",
-        maxWidth: 600,
-        margin: "0 auto",
-      }}
-    >
-      <h2>⛔ Rôle inconnu ou non autorisé</h2>
-      <p>Merci de contacter un administrateur si vous pensez que c’est une erreur.</p>
+    <div className="h-screen flex flex-col items-center justify-center text-center px-4">
+      <h2 className="text-xl font-bold text-red-600 mb-2">⛔ Rôle inconnu</h2>
+      <p className="text-gray-600">
+        Merci de contacter un administrateur si vous pensez que c’est une erreur.
+      </p>
     </div>
   );
 }

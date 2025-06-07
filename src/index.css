@@ -1,162 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* RESET DE BASE */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  body {
-    font-family: "Segoe UI", "Roboto", "Arial", sans-serif;
-    background-color: #f6f8fa;
-    color: #333;
-    line-height: 1.5;
-  }
-  
-  h1,
-  h2,
-  h3 {
-    color: #111;
-    margin-bottom: 10px;
-  }
-  
-  ul {
-    padding-left: 20px;
-  }
-  
-  a {
-    color: #2196f3;
-    text-decoration: none;
-  }
-  a:hover {
-    text-decoration: underline;
-  }
-  
-  .text-center {
-    text-align: center;
-  }
-  
-  .container {
-    max-width: 1200px;
-    margin: auto;
-    padding: 20px;
-  }
-  
-  /* FORMULAIRES */
-  input,
-  select,
-  textarea {
-    font-family: inherit;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 8px;
-  }
-  
-  input:focus,
-  select:focus,
-  textarea:focus {
-    outline: none;
-    border-color: #4caf50;
-    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
-  }
-  
-  /* BOUTONS */
-  button,
-  .btn {
-    padding: 10px 16px;
-    border: none;
-    border-radius: 5px;
-    background-color: #4caf50;
-    color: white;
-    font-weight: bold;
-    transition: background-color 0.2s ease, opacity 0.2s ease;
-    cursor: pointer;
-  }
-  
-  button:hover,
-  .btn:hover {
-    opacity: 0.9;
-  }
-  
-  /* VARIANTES DE BOUTONS */
-  .btn-danger {
-    background-color: #f44336;
-  }
-  
-  .btn-primary {
-    background-color: #2196f3;
-  }
-  
-  .btn-gray {
-    background-color: #9e9e9e;
-  }
-  
-  /* CARTE (conteneur visuel) */
-  .card {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 16px;
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    margin-bottom: 20px;
-  }
-  
-  /* TABLEAU */
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 16px;
-  }
-  
-  .table th,
-  .table td {
-    border: 1px solid #ccc;
-    padding: 12px;
-    text-align: left;
-    background-color: #fff;
-  }
-  
-  .table th {
-    background-color: #f1f1f1;
-  }
-  
-  /* BADGES */
-  .badge {
-    display: inline-block;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    border-radius: 12px;
-    font-weight: 600;
-  }
-  .badge-success {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-  }
-  .badge-error {
-    background-color: #fdecea;
-    color: #c62828;
-  }
-  
-  /* MODE SOMBRE (optionnel) */
-  body.dark-mode {
-    background-color: #121212;
-    color: #eee;
-  }
-  body.dark-mode h1,
-  body.dark-mode h2,
-  body.dark-mode h3 {
-    color: #fff;
-  }
-  body.dark-mode .card {
-    background-color: #1e1e1e;
-    border-color: #333;
-  }
-  body.dark-mode .btn {
-    background-color: #388e3c;
-  }
-  body.dark-mode .btn-danger {
-    background-color: #e53935;
-  }
-  body.dark-mode .btn-primary {
-    background-color: #1976d2;
-  }
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", "Roboto", "Arial", sans-serif;
+  background-color: #f6f8fa;
+  color: #333;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  color: #111;
+  margin-bottom: 10px;
+}
+
+ul {
+  padding-left: 20px;
+}
+
+a {
+  color: #2196f3;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* FORMULAIRES */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+/* BOUTONS */
+button,
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 5px;
+  background-color: #4caf50;
+  color: white;
+  font-weight: bold;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
+}
+
+button:hover,
+.btn:hover {
+  opacity: 0.9;
+}
+
+/* VARIANTES DE BOUTONS */
+.btn-danger {
+  background-color: #f44336;
+}
+
+.btn-primary {
+  background-color: #2196f3;
+}
+
+.btn-gray {
+  background-color: #9e9e9e;
+}
+
+/* CARTE (conteneur visuel) */
+.card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+/* TABLEAU */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.table th,
+.table td {
+  border: 1px solid #ccc;
+  padding: 12px;
+  text-align: left;
+  background-color: #fff;
+}
+
+.table th {
+  background-color: #f1f1f1;
+}
+
+/* BADGES */
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.badge-success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+.badge-error {
+  background-color: #fdecea;
+  color: #c62828;
+}
+
+/* MODE SOMBRE (optionnel) */
+body.dark-mode {
+  background-color: #121212;
+  color: #eee;
+}
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3 {
+  color: #fff;
+}
+body.dark-mode .card {
+  background-color: #1e1e1e;
+  border-color: #333;
+}
+body.dark-mode .btn {
+  background-color: #388e3c;
+}
+body.dark-mode .btn-danger {
+  background-color: #e53935;
+}
+body.dark-mode .btn-primary {
+  background-color: #1976d2;
+}
