@@ -21,6 +21,7 @@ type Appel = {
   date: string;
   statut_appel: string;
   commentaire: string;
+  agent: { prenom?: string; nom?: string } | null;
 };
 
 export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
@@ -30,7 +31,6 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   const [editMode, setEditMode] = useState<Record<string, boolean>>({});
   const [editValues, setEditValues] = useState<Record<string, Partial<Contact>>>({});
 
-  // Rafraîchissement automatique toutes les 4 secondes
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 4000);
@@ -43,13 +43,24 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
       .select("*")
       .eq("agent_id", agentId);
 
+    // Remplace users:agent_id par le vrai nom de ta table user si besoin !
     const { data: appelsData } = await supabase
       .from("call_history")
-      .select("*")
+      .select("*, users:agent_id (prenom, nom)")
       .order("date", { ascending: false });
 
+    const formattedAppels =
+      appelsData?.map((a: any) => ({
+        id: a.id,
+        contact_id: a.contact_id,
+        date: a.date,
+        statut_appel: a.statut_appel,
+        commentaire: a.commentaire,
+        agent: a.users ? { prenom: a.users.prenom, nom: a.users.nom } : null,
+      })) || [];
+
     setContacts(contactData || []);
-    setCallHistory(appelsData || []);
+    setCallHistory(formattedAppels);
   };
 
   const contactsAvecRDV = contacts.filter((c) => {
@@ -85,7 +96,19 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
       commentaire: commentaireTexte || type,
     });
 
-    alert(`${type} soumise à validation.`);
+    setCommentaire((prev) => ({ ...prev, [contactId]: "" }));
+    await fetchData();
+  };
+
+  const ajouterCommentaire = async (contactId: string) => {
+    const texte = commentaire[contactId]?.trim();
+    if (!texte) return alert("Merci de saisir un commentaire.");
+    await supabase.from("call_history").insert({
+      contact_id: contactId,
+      agent_id: agentId,
+      statut_appel: "Note",
+      commentaire: texte,
+    });
     setCommentaire((prev) => ({ ...prev, [contactId]: "" }));
     await fetchData();
   };
@@ -109,30 +132,40 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   };
 
   const renderContactCard = (c: Contact) => {
+    // Historique complet pour ce contact (le plus récent en haut)
     const historique = callHistory
       .filter((h) => h.contact_id === c.id)
-      .slice(0, 3);
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     const editing = editMode[c.id];
     const values = editValues[c.id] || {};
 
     return (
       <div key={c.id} className="border rounded-lg p-4 shadow-md bg-white mb-6">
-        <h2 className="text-xl font-bold">
-          {editing ? (
-            <input
-              className="border rounded px-2 py-1"
-              value={values.nom ?? c.nom}
-              onChange={(e) =>
-                setEditValues((prev) => ({
-                  ...prev,
-                  [c.id]: { ...prev[c.id], nom: e.target.value },
-                }))
-              }
-            />
-          ) : (
-            c.nom
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">
+            {editing ? (
+              <input
+                className="border rounded px-2 py-1"
+                value={values.nom ?? c.nom}
+                onChange={(e) =>
+                  setEditValues((prev) => ({
+                    ...prev,
+                    [c.id]: { ...prev[c.id], nom: e.target.value },
+                  }))
+                }
+              />
+            ) : (
+              c.nom
+            )}
+          </h2>
+          {/* BADGE VALIDÉ */}
+          {c.statut === "assigné" && (
+            <span className="inline-flex items-center px-3 py-1 bg-green-500 text-white rounded-full text-xs font-bold animate-pulse ml-2">
+              ✅ Validé
+            </span>
           )}
-        </h2>
+        </div>
 
         <p>
           <strong>📞 Téléphone :</strong>{" "}
@@ -234,15 +267,26 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           )}
         </div>
 
-        <textarea
-          placeholder="Ajouter un commentaire ici..."
-          value={commentaire[c.id] || ""}
-          onChange={(e) =>
-            setCommentaire((prev) => ({ ...prev, [c.id]: e.target.value }))
-          }
-          className="w-full mt-2 border rounded px-2 py-1"
-        />
+        {/* Champ commentaire + bouton, toujours visible */}
+        <div className="flex gap-2 mt-2">
+          <textarea
+            placeholder="Ajouter un commentaire ici..."
+            value={commentaire[c.id] || ""}
+            onChange={(e) =>
+              setCommentaire((prev) => ({ ...prev, [c.id]: e.target.value }))
+            }
+            className="w-full border rounded px-2 py-1"
+            rows={2}
+          />
+          <button
+            onClick={() => ajouterCommentaire(c.id)}
+            className="bg-blue-500 text-white px-4 py-2 rounded font-bold"
+          >
+            Envoyer
+          </button>
+        </div>
 
+        {/* Signature/Non Signature : seulement si statut = rdv */}
         {c.statut === "rdv" && (
           <div className="mt-3">
             <button
@@ -260,19 +304,36 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           </div>
         )}
 
-        {historique.length > 0 && (
-          <div className="mt-4 bg-gray-100 p-3 rounded">
-            <strong>🕓 3 derniers appels :</strong>
+        {/* Historique avec scrolling */}
+        <div
+          className="mt-4 bg-gray-100 p-3 rounded"
+          style={{ maxHeight: 200, overflowY: "auto" }}
+        >
+          <strong>🕓 Historique des commentaires :</strong>
+          {historique.length === 0 ? (
+            <div className="text-gray-400 italic text-sm">
+              Aucun commentaire.
+            </div>
+          ) : (
             <ul className="mt-2 list-disc list-inside text-sm text-gray-700">
               {historique.map((h) => (
                 <li key={h.id}>
-                  {new Date(h.date).toLocaleString()} — {h.statut_appel}
-                  {h.commentaire && ` — ${h.commentaire}`}
+                  <span className="font-bold">
+                    {h.agent
+                      ? `${h.agent.prenom || ""} ${h.agent.nom || ""}`.trim()
+                      : "Agent inconnu"}
+                  </span>{" "}
+                  <span className="text-gray-500">
+                    {new Date(h.date).toLocaleString()}
+                  </span>
+                  {" — "}
+                  <span className="italic">{h.statut_appel}</span>
+                  {h.commentaire && ` : ${h.commentaire}`}
                 </li>
               ))}
             </ul>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };

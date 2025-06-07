@@ -18,7 +18,8 @@ type Appel = {
   id: string;
   date: string;
   commentaire: string;
-  agent_name?: string;
+  agent_prenom?: string;
+  agent_nom?: string;
 };
 
 export default function FicheClient({
@@ -43,9 +44,10 @@ export default function FicheClient({
   };
 
   const fetchHistorique = async () => {
+    // Attention : adapte 'users' si ta table des agents s'appelle 'agents'
     const { data } = await supabase
       .from("call_history")
-      .select("*, agents ( name )")
+      .select("*, users:agent_id (prenom, nom)")
       .eq("contact_id", contactId)
       .order("date", { ascending: false });
 
@@ -54,7 +56,8 @@ export default function FicheClient({
         id: d.id,
         date: d.date,
         commentaire: d.commentaire,
-        agent_name: d.agents?.name || "Inconnu",
+        agent_prenom: d.users?.prenom || "",
+        agent_nom: d.users?.nom || "",
       })) || [];
 
     setHistorique(formatted);
@@ -100,8 +103,7 @@ export default function FicheClient({
             <span className="font-semibold">Nom :</span> {contact.nom}
           </div>
           <div>
-            <span className="font-semibold">Téléphone :</span>{" "}
-            {contact.telephone}
+            <span className="font-semibold">Téléphone :</span> {contact.telephone}
           </div>
           <div>
             <span className="font-semibold">Adresse :</span> {contact.adresse}
@@ -110,16 +112,13 @@ export default function FicheClient({
             <span className="font-semibold">NPA :</span> {contact.npa}
           </div>
           <div>
-            <span className="font-semibold">Assurance :</span>{" "}
-            {contact.type_assurance}
+            <span className="font-semibold">Assurance :</span> {contact.type_assurance}
           </div>
           <div>
-            <span className="font-semibold">Catégorie :</span>{" "}
-            {contact.categorie_contact}
+            <span className="font-semibold">Catégorie :</span> {contact.categorie_contact}
           </div>
           <div>
-            <span className="font-semibold">RDV :</span>{" "}
-            {contact.rdv_date || "Non défini"}
+            <span className="font-semibold">RDV :</span> {contact.rdv_date || "Non défini"}
           </div>
           <div>
             <span className="font-semibold">Statut :</span> {contact.statut}
@@ -157,8 +156,10 @@ export default function FicheClient({
             {historique.map((appel) => (
               <li key={appel.id} className="border-b pb-2">
                 <p className="text-sm text-gray-700">
-                  <span className="font-semibold">{appel.agent_name}</span> —{" "}
-                  {new Date(appel.date).toLocaleString("fr-FR")}
+                  <span className="font-semibold">
+                    {appel.agent_prenom || "Inconnu"} {appel.agent_nom || ""}
+                  </span>{" "}
+                  — {new Date(appel.date).toLocaleString("fr-FR")}
                 </p>
                 <p className="text-gray-800">{appel.commentaire}</p>
               </li>

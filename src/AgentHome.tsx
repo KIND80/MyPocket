@@ -13,51 +13,73 @@ type AgentStat = {
 export default function AgentHome({ agentId }: { agentId: string }) {
   const [onglet, setOnglet] = useState<"global" | "mes_contacts">("global");
   const [prenom, setPrenom] = useState<string>("");
-  const [stats, setStats] = useState<{ appels: number; rdvs: number }>({
+  const [nom, setNom] = useState<string>("");
+  const [stats, setStats] = useState<{
+    appels: number;
+    rdvs: number;
+    signatures: number;
+    taux_signature: number;
+  }>({
     appels: 0,
     rdvs: 0,
+    signatures: 0,
+    taux_signature: 0,
   });
   const [classement, setClassement] = useState<AgentStat[]>([]);
 
   useEffect(() => {
-    const fetchPrenom = async () => {
+    const fetchNomPrenom = async () => {
       const { data } = await supabase
         .from("users")
-        .select("prenom")
+        .select("prenom, nom")
         .eq("id", agentId)
         .single();
       if (data?.prenom) setPrenom(data.prenom);
+      if (data?.nom) setNom(data.nom);
     };
 
     const fetchStats = async () => {
       const startOfWeek = getStartOfWeek();
 
+      // Tous les appels de l'agent cette semaine
       const { data: appels } = await supabase
         .from("call_history")
         .select("*")
         .eq("agent_id", agentId)
         .gte("date", startOfWeek);
 
-      const { data: rdvs } = await supabase
-        .from("call_history")
+      // Nombre de contacts assignés à l'agent avec statut "rdv"
+      const { data: contactsRdv } = await supabase
+        .from("contacts")
         .select("*")
         .eq("agent_id", agentId)
-        .eq("statut_appel", "RDV")
-        .gte("date", startOfWeek);
+        .eq("statut", "rdv");
 
-      console.log("📞 Appels récupérés :", appels);
-      console.log("📅 RDVs récupérés :", rdvs);
+      // Nombre de signatures (basé sur "Signature" dans commentaire OU statut_appel)
+      const signatures = (appels || []).filter(
+        (a) =>
+          (a.commentaire &&
+            a.commentaire.toLowerCase().includes("signature")) ||
+          (a.statut_appel && a.statut_appel.toLowerCase().includes("signature"))
+      ).length;
 
-      setStats({ appels: appels?.length || 0, rdvs: rdvs?.length || 0 });
+      const nbAppels = appels?.length || 0;
+      const taux_signature = nbAppels > 0 ? (signatures / nbAppels) * 100 : 0;
+
+      setStats({
+        appels: nbAppels,
+        rdvs: contactsRdv?.length || 0,
+        signatures,
+        taux_signature,
+      });
     };
 
     const fetchClassement = async () => {
       const { data } = await supabase.rpc("classement_agents_semaine");
       if (data) setClassement(data);
-      console.log("🏆 Classement récupéré :", data);
     };
 
-    fetchPrenom();
+    fetchNomPrenom();
     fetchStats();
     fetchClassement();
   }, [agentId]);
@@ -80,7 +102,7 @@ export default function AgentHome({ agentId }: { agentId: string }) {
       {/* Header */}
       <div className="flex flex-col items-center mb-6 gap-2 text-center">
         <h1 className="text-2xl font-bold text-gray-800">
-          👋 Bonjour {prenom || "Agent"}
+          👋 Bonjour {prenom || nom ? `${prenom} ${nom}` : "Agent"}
         </h1>
         <button
           onClick={handleLogout}
@@ -130,6 +152,13 @@ export default function AgentHome({ agentId }: { agentId: string }) {
               </h3>
               <p>📞 Appels : {stats.appels}</p>
               <p>✅ RDVs : {stats.rdvs}</p>
+              <p>✍️ Signatures : {stats.signatures}</p>
+              <p>
+                <span>Taux de signature : </span>
+                <span className="font-bold">
+                  {stats.taux_signature.toFixed(1)}%
+                </span>
+              </p>
             </div>
 
             {/* Classement */}

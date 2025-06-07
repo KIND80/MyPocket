@@ -185,7 +185,10 @@ export default function DashboardAdmin() {
         <h1 style={{ fontSize: "1.6rem", marginBottom: 10 }}>
           👑 Tableau de bord Admin — Bonjour {userName}
         </h1>
-        <button onClick={() => supabase.auth.signOut()} style={actionBtnStyle("#f44336")}>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          style={actionBtnStyle("#f44336")}
+        >
           🔒 Déconnexion
         </button>
       </header>
@@ -195,7 +198,9 @@ export default function DashboardAdmin() {
         {topPerformers.length === 0 ? (
           <p>Aucun agent disponible.</p>
         ) : (
-          <ul style={{ display: "flex", gap: 20, padding: 0, listStyle: "none" }}>
+          <ul
+            style={{ display: "flex", gap: 20, padding: 0, listStyle: "none" }}
+          >
             {topPerformers.map((agent) => (
               <li
                 key={agent.id}
@@ -207,7 +212,9 @@ export default function DashboardAdmin() {
                   boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
                 }}
               >
-                <div style={{ fontWeight: "bold", fontSize: 18 }}>{agent.name}</div>
+                <div style={{ fontWeight: "bold", fontSize: 18 }}>
+                  {agent.name}
+                </div>
                 <div>Email : {agent.email}</div>
                 <div>
                   Taux de signature :{" "}
