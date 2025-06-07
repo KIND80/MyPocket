@@ -68,9 +68,12 @@ export default function Login({
 
   return (
     <div className="max-w-sm mx-auto p-6 text-center">
-      <h1 className="text-2xl font-bold mb-2">👋 Bienvenue sur <span className="text-blue-600">MyPocket</span></h1>
+      <h1 className="text-2xl font-bold mb-2">
+        👋 Bienvenue sur <span className="text-blue-600">MyPocket</span>
+      </h1>
       <p className="text-gray-600 mb-6">
-        Votre outil intelligent pour la gestion des contacts et le phoning efficace.
+        Votre outil intelligent pour la gestion des contacts et le phoning
+        efficace.
       </p>
 
       <h2 className="text-lg font-semibold mb-4">🔐 Connexion</h2>
@@ -119,7 +122,7 @@ export default function Login({
         onClick={() => document.body.classList.toggle("dark-mode")}
         className="mt-8 w-full bg-gray-700 text-white font-semibold py-2 rounded hover:bg-gray-800"
       >
-        🌗 Activer/Désactiver le mode sombre
+        🌗 Activer/Désactiver le mode sombre contact@monfideleconseiller.ch
       </button>
     </div>
   );
