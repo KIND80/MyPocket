@@ -48,23 +48,36 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     fetchData();
   }, []);
 
+  // 🔥 Correction ici : recherche sur nom ET téléphone
   useEffect(() => {
     let filtres = [...contacts];
-    if (search) {
-      filtres = filtres.filter((c) =>
-        c.telephone.replace(/\s/g, "").includes(search.replace(/\s/g, ""))
+
+    if (search.trim()) {
+      const searchLower = search.toLowerCase().replace(/\s/g, "");
+      filtres = filtres.filter(
+        (c) =>
+          c.nom.toLowerCase().includes(search.toLowerCase()) ||
+          c.telephone.replace(/\s/g, "").includes(searchLower)
       );
     }
+
     if (categorie) {
       filtres = filtres.filter((c) => c.categorie_contact === categorie);
     }
+
     setFiltered(filtres);
-    if (!search && filtres.length > 0) {
-      const rand = filtres[Math.floor(Math.random() * filtres.length)];
-      setCurrent(rand);
-      setForm(rand); // init form
-    }
   }, [search, categorie, contacts]);
+
+  // ✅ Nouvelle logique : actualise automatiquement le contact affiché
+  useEffect(() => {
+    if (filtered.length > 0) {
+      setCurrent(filtered[0]);
+      setForm(filtered[0]);
+    } else {
+      setCurrent(null);
+      setForm({});
+    }
+  }, [filtered]);
 
   useEffect(() => {
     const fetchHistorique = async () => {
@@ -103,7 +116,6 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     nextContact();
   };
 
-  // ==> C'est ici qu'on ajoute le LOG <==
   const handleRdv = async () => {
     if (!current || !commentaire.trim()) return;
     await enregistrerAppel("rdv", commentaire.trim());
@@ -184,7 +196,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
       <div className="flex flex-col gap-2 mb-4 sm:flex-row">
         <input
           type="text"
-          placeholder="🔍 Rechercher un numéro"
+          placeholder="🔍 Rechercher par nom ou numéro"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 px-3 py-2 border rounded"
