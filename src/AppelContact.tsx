@@ -71,8 +71,9 @@ export default function AppelContact({ agentId }: { agentId: string }) {
   // ✅ Nouvelle logique : actualise automatiquement le contact affiché
   useEffect(() => {
     if (filtered.length > 0) {
-      setCurrent(filtered[0]);
-      setForm(filtered[0]);
+      const randomIdx = Math.floor(Math.random() * filtered.length);
+      setCurrent(filtered[randomIdx]);
+      setForm(filtered[randomIdx]);
     } else {
       setCurrent(null);
       setForm({});
@@ -145,7 +146,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
 
   const handleValiderCommentaire = async () => {
     if (!current || !commentaire.trim()) return;
-    await enregistrerAppel("signature", commentaire.trim());
+    await enregistrerAppel("appel", commentaire.trim()); // ✅ Utilise un statut autorisé
     nextContact();
   };
 
@@ -288,7 +289,12 @@ export default function AppelContact({ agentId }: { agentId: string }) {
               </button>
             </a>
             <button
-              onClick={nextContact}
+              onClick={async () => {
+                if (current) {
+                  await enregistrerAppel("appel", "Contact passé sans appel");
+                }
+                nextContact();
+              }}
               className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
             >
               ⏭️ Passer

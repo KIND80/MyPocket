@@ -29,7 +29,9 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   const [callHistory, setCallHistory] = useState<Appel[]>([]);
   const [commentaire, setCommentaire] = useState<Record<string, string>>({});
   const [editMode, setEditMode] = useState<Record<string, boolean>>({});
-  const [editValues, setEditValues] = useState<Record<string, Partial<Contact>>>({});
+  const [editValues, setEditValues] = useState<
+    Record<string, Partial<Contact>>
+  >({});
 
   useEffect(() => {
     fetchData();
@@ -92,8 +94,8 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
     await supabase.from("call_history").insert({
       contact_id: contactId,
       agent_id: agentId,
-      statut_appel: "Répondu",
-      commentaire: commentaireTexte || type,
+      statut_appel: type === "Signature" ? "signature" : "non_signature",
+      commentaire: commentaireTexte,
     });
 
     setCommentaire((prev) => ({ ...prev, [contactId]: "" }));

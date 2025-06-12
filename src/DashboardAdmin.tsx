@@ -65,15 +65,18 @@ export default function DashboardAdmin() {
       const finalStats: AgentStat[] = users.map((agent) => {
         const appels = calls.filter((c) => c.agent_id === agent.id);
         const total_appels = appels.length;
-        const signatures = appels.filter((a) =>
-          (a.commentaire || "").toLowerCase().includes("signature")
-        ).length;
-        const non_signatures = appels.filter((a) =>
-          (a.commentaire || "").toLowerCase().includes("non signature")
-        ).length;
+
+        const signatures = appels.filter(
+          (a) => a.statut_appel === "signature"
+        ).length; // ✅ Correction
+        const non_signatures = appels.filter(
+          (a) => a.statut_appel === "non_signature"
+        ).length; // ✅ Correction
+
         const a_valider = contacts.filter(
           (c) => c.agent_id === agent.id && c.statut === "à_valider"
         ).length;
+
         const taux_signature =
           total_appels > 0 ? (signatures / total_appels) * 100 : 0;
 
