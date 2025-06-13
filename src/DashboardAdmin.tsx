@@ -10,7 +10,7 @@ type AgentStat = {
   signatures: number;
   non_signatures: number;
   a_valider: number;
-  taux_signature: number; // nouveau champ %
+  taux_signature: number;
 };
 
 type Contact = {
@@ -30,6 +30,8 @@ type Appel = {
   agent_id: string;
   date: string;
   commentaire: string | null;
+  statut_appel: string;
+  admin_validation?: string | null;
 };
 
 type Agent = {
@@ -66,12 +68,16 @@ export default function DashboardAdmin() {
         const appels = calls.filter((c) => c.agent_id === agent.id);
         const total_appels = appels.length;
 
+        // 🔥 Correction ici : on ne compte que les signatures validées par l’admin
         const signatures = appels.filter(
-          (a) => a.statut_appel === "signature"
-        ).length; // ✅ Correction
+          (a) =>
+            a.statut_appel === "signature" && a.admin_validation === "validée"
+        ).length;
         const non_signatures = appels.filter(
-          (a) => a.statut_appel === "non_signature"
-        ).length; // ✅ Correction
+          (a) =>
+            a.statut_appel === "non_signature" &&
+            (a.admin_validation === "validée" || a.admin_validation == null)
+        ).length;
 
         const a_valider = contacts.filter(
           (c) => c.agent_id === agent.id && c.statut === "à_valider"
@@ -132,8 +138,7 @@ export default function DashboardAdmin() {
     fetchUser();
   }, []);
 
-  // *** CORRECTION PRINCIPALE ICI ***
-  // Valider => assigne définitivement à l'agent (statut "assigné" + visible_globally: false)
+  // Valider => assigne à l'agent et valide le dernier call_history
   const validerContact = async (id: string, agentId: string) => {
     await supabase
       .from("contacts")
@@ -144,10 +149,16 @@ export default function DashboardAdmin() {
       })
       .eq("id", id);
 
+    // Appelle la fonction RPC Supabase
+    await supabase.rpc("update_latest_call_validation", {
+      contact_id_input: id,
+      validation_status: "validée",
+    });
+
     setContactsAValider((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Refuser => retourne dans le portefeuille global, non assigné
+  // Refuser => retour portefeuille global, met admin_validation à "refusée"
   const archiverContact = async (id: string) => {
     await supabase
       .from("contacts")
@@ -158,6 +169,12 @@ export default function DashboardAdmin() {
         visible_globally: true,
       })
       .eq("id", id);
+
+    // Appelle la fonction RPC Supabase
+    await supabase.rpc("update_latest_call_validation", {
+      contact_id_input: id,
+      validation_status: "refusée",
+    });
 
     setContactsAValider((prev) => prev.filter((c) => c.id !== id));
   };

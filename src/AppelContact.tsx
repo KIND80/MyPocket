@@ -27,9 +27,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
   const [search, setSearch] = useState("");
   const [categorie, setCategorie] = useState("");
   const [current, setCurrent] = useState<Contact | null>(null);
-  const [etatAppel, setEtatAppel] = useState<"init" | "en_cours" | "oui">(
-    "init"
-  );
+  const [etatAppel, setEtatAppel] = useState<"init" | "en_cours" | "oui">("init");
   const [historique, setHistorique] = useState<Appel[]>([]);
   const [commentaire, setCommentaire] = useState("");
   const [edition, setEdition] = useState(false);
@@ -48,7 +46,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     fetchData();
   }, []);
 
-  // 🔥 Correction ici : recherche sur nom ET téléphone
+  // Recherche sur nom ET téléphone
   useEffect(() => {
     let filtres = [...contacts];
 
@@ -68,7 +66,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     setFiltered(filtres);
   }, [search, categorie, contacts]);
 
-  // ✅ Nouvelle logique : actualise automatiquement le contact affiché
+  // Affiche un contact au hasard parmi les filtrés
   useEffect(() => {
     if (filtered.length > 0) {
       const randomIdx = Math.floor(Math.random() * filtered.length);
@@ -99,8 +97,9 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     navigate("/login");
   };
 
+  // === Enregistre selon le statut ===
   const enregistrerAppel = async (
-    statut: "signature" | "non_signature" | "rdv" | "appel" | "injoignable",
+    statut: "note" | "non_signature" | "rdv" | "appel",
     commentaireFinal: string
   ): Promise<void> => {
     if (!current) return;
@@ -112,16 +111,26 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     });
   };
 
+  // Bouton passer
+  const handlePasser = async () => {
+    if (current) {
+      await enregistrerAppel("appel", "Contact passé sans appel");
+    }
+    nextContact();
+  };
+
+  // Bouton injoignable
   const handleInjoignable = async () => {
     await enregistrerAppel("non_signature", "Injoignable");
     nextContact();
   };
 
+  // Bouton RDV
   const handleRdv = async () => {
     if (!current || !commentaire.trim()) return;
     await enregistrerAppel("rdv", commentaire.trim());
 
-    const { error, data } = await supabase
+    await supabase
       .from("contacts")
       .update({
         agent_id: agentId,
@@ -130,13 +139,6 @@ export default function AppelContact({ agentId }: { agentId: string }) {
       })
       .eq("id", current.id);
 
-    console.log("Résultat UPDATE contact RDV :", {
-      error,
-      data,
-      agentId,
-      contactId: current.id,
-    });
-
     window.open(
       `https://calendar.google.com/calendar/u/0/r/eventedit?text=RDV+${current.nom}&details=Tel:+${current.telephone}`,
       "_blank"
@@ -144,9 +146,10 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     nextContact();
   };
 
+  // Bouton valider (note simple)
   const handleValiderCommentaire = async () => {
     if (!current || !commentaire.trim()) return;
-    await enregistrerAppel("appel", commentaire.trim()); // ✅ Utilise un statut autorisé
+    await enregistrerAppel("note", commentaire.trim());
     nextContact();
   };
 
@@ -289,12 +292,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
               </button>
             </a>
             <button
-              onClick={async () => {
-                if (current) {
-                  await enregistrerAppel("appel", "Contact passé sans appel");
-                }
-                nextContact();
-              }}
+              onClick={handlePasser}
               className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
             >
               ⏭️ Passer

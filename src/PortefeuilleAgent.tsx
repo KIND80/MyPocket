@@ -24,6 +24,87 @@ type Appel = {
   agent: { prenom?: string; nom?: string } | null;
 };
 
+// ---- Composant MES NOTES ----
+function MesNotes({ agentId }: { agentId: string }) {
+  const [notes, setNotes] = useState<
+    { id: string; note: string; created_at: string }[]
+  >([]);
+  const [note, setNote] = useState("");
+
+  const fetchNotes = async () => {
+    const { data } = await supabase
+      .from("user_notes")
+      .select("*")
+      .eq("agent_id", agentId)
+      .order("created_at", { ascending: false });
+    setNotes(data || []);
+  };
+
+  useEffect(() => {
+    fetchNotes();
+    // Facultatif: recharger à intervalle régulier
+    // const interval = setInterval(fetchNotes, 10000);
+    // return () => clearInterval(interval);
+  }, [agentId]);
+
+  const handleAddNote = async () => {
+    if (!note.trim()) return;
+    await supabase.from("user_notes").insert({
+      agent_id: agentId,
+      note: note.trim(),
+    });
+    setNote("");
+    fetchNotes();
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    await supabase.from("user_notes").delete().eq("id", id);
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  return (
+    <div className="bg-gray-50 border rounded-lg p-4 mb-8 shadow">
+      <h2 className="font-bold mb-2">🗒️ Mes notes personnelles</h2>
+      <div className="flex gap-2 mb-2">
+        <textarea
+          className="flex-1 border rounded px-2 py-1"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Ajouter une note ou un rappel perso…"
+          rows={2}
+        />
+        <button
+          onClick={handleAddNote}
+          className="bg-blue-500 text-white px-3 py-2 rounded font-bold"
+        >
+          Ajouter
+        </button>
+      </div>
+      {notes.length === 0 ? (
+        <p className="text-gray-400 text-sm">Aucune note pour le moment.</p>
+      ) : (
+        <ul className="space-y-2">
+          {notes.map((n) => (
+            <li
+              key={n.id}
+              className="flex justify-between items-center bg-white border rounded px-3 py-1"
+            >
+              <span className="text-gray-700">{n.note}</span>
+              <button
+                onClick={() => handleDeleteNote(n.id)}
+                className="text-red-400 hover:text-red-700 text-xs ml-2"
+              >
+                Supprimer
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---- COMPOSANT PRINCIPAL ----
 export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [callHistory, setCallHistory] = useState<Appel[]>([]);
@@ -45,7 +126,6 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
       .select("*")
       .eq("agent_id", agentId);
 
-    // Remplace users:agent_id par le vrai nom de ta table user si besoin !
     const { data: appelsData } = await supabase
       .from("call_history")
       .select("*, users:agent_id (prenom, nom)")
@@ -96,6 +176,7 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
       agent_id: agentId,
       statut_appel: type === "Signature" ? "signature" : "non_signature",
       commentaire: commentaireTexte,
+      admin_validation: null, // Pour workflow admin !
     });
 
     setCommentaire((prev) => ({ ...prev, [contactId]: "" }));
@@ -293,13 +374,15 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           <div className="mt-3">
             <button
               onClick={() => validerSignature(c.id, "Signature")}
-              className="bg-green-500 text-white px-4 py-2 rounded mr-2"
+              disabled={!commentaire[c.id]?.trim()}
+              className="bg-green-500 text-white px-4 py-2 rounded mr-2 disabled:opacity-50"
             >
               ✅ Signature
             </button>
             <button
               onClick={() => validerSignature(c.id, "Non Signature")}
-              className="bg-red-500 text-white px-4 py-2 rounded"
+              disabled={!commentaire[c.id]?.trim()}
+              className="bg-red-500 text-white px-4 py-2 rounded disabled:opacity-50"
             >
               ❌ Non Signature
             </button>
@@ -342,6 +425,8 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
 
   return (
     <div className="container mx-auto px-4 py-6">
+      <MesNotes agentId={agentId} />
+
       <h1 className="text-2xl font-bold mb-6 text-center">
         📁 Mon portefeuille
       </h1>
