@@ -94,18 +94,17 @@ export default function App() {
 
   // Redirection automatique seulement depuis /login si déjà connecté
   useEffect(() => {
+    // Pas de redirection automatique si sur /reset-password ou /signup-company
     if (
-      !loading &&
-      role === "admin" &&
-      location.pathname === "/login"
+      location.pathname === "/reset-password" ||
+      location.pathname === "/signup-company"
     ) {
+      return;
+    }
+    if (!loading && role === "admin" && location.pathname === "/login") {
       navigate("/admin", { replace: true });
     }
-    if (
-      !loading &&
-      role === "agent" &&
-      location.pathname === "/login"
-    ) {
+    if (!loading && role === "agent" && location.pathname === "/login") {
       navigate("/agent", { replace: true });
     }
     // eslint-disable-next-line
