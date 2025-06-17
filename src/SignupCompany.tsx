@@ -1,28 +1,51 @@
 import React, { useState } from "react";
 import { supabase } from "./supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 export default function SignupCompany() {
   const [company, setCompany] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<{
+    type: "error" | "success";
+    text: string;
+  } | null>(null);
+  const navigate = useNavigate();
+
+  const isFormValid =
+    company.trim().length > 0 &&
+    name.trim().length > 0 &&
+    email.trim().length > 0 &&
+    password.length >= 8 &&
+    password === confirmPassword;
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormValid) {
+      setMessage({
+        type: "error",
+        text: "Veuillez remplir correctement tous les champs.",
+      });
+      return;
+    }
     setLoading(true);
-    setMessage("");
+    setMessage(null);
 
     // 1. Créer la société
     const { data: companyData, error: companyError } = await supabase
       .from("companies")
-      .insert({ name: company })
+      .insert({ name: company.trim() })
       .select()
       .single();
 
     if (companyError || !companyData) {
-      setMessage("Erreur lors de la création de la société.");
+      setMessage({
+        type: "error",
+        text: "Erreur lors de la création de la société.",
+      });
       setLoading(false);
       return;
     }
@@ -30,81 +53,151 @@ export default function SignupCompany() {
     // 2. Créer le compte utilisateur (admin société)
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
       {
-        email,
+        email: email.trim(),
         password,
         options: {
           data: {
-            name,
+            name: name.trim(),
             company_id: companyData.id,
-            role: "admin", // optionnel, selon ton modèle users
+            role: "admin",
           },
         },
       }
     );
 
     if (signUpError) {
-      setMessage(
-        "Erreur lors de la création de l'utilisateur : " + signUpError.message
-      );
+      setMessage({
+        type: "error",
+        text: "Erreur création utilisateur : " + signUpError.message,
+      });
       setLoading(false);
       return;
     }
 
-    setMessage(
-      "Compte créé ! Vérifiez vos emails pour confirmer votre inscription."
-    );
+    // 3. Ajouter dans la table users (logique métier)
+    if (signUpData?.user?.id) {
+      const { error: userError } = await supabase.from("users").insert({
+        id: signUpData.user.id,
+        email: email.trim(),
+        name: name.trim(),
+        company_id: companyData.id,
+        role: "admin",
+      });
+
+      if (userError) {
+        setMessage({
+          type: "error",
+          text: "Erreur ajout user en base : " + userError.message,
+        });
+        setLoading(false);
+        return;
+      }
+    }
+
+    setMessage({
+      type: "success",
+      text: "Compte créé ! Vérifiez vos emails pour confirmer.",
+    });
     setLoading(false);
-    // Tu peux rediriger automatiquement si tu veux
+
+    // Redirection automatique après 3 secondes
+    setTimeout(() => navigate("/login"), 3000);
   };
 
   return (
-    <form
-      onSubmit={handleSignup}
-      className="max-w-lg mx-auto mt-8 p-6 border rounded bg-white shadow space-y-4"
-    >
-      <h2 className="text-2xl font-bold mb-4">
-        Créer une société & compte admin
-      </h2>
-      <input
-        type="text"
-        required
-        value={company}
-        onChange={(e) => setCompany(e.target.value)}
-        placeholder="Nom de la société"
-        className="w-full px-3 py-2 border rounded"
-      />
-      <input
-        type="text"
-        required
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Votre nom/prénom"
-        className="w-full px-3 py-2 border rounded"
-      />
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email de l'admin"
-        className="w-full px-3 py-2 border rounded"
-      />
-      <input
-        type="password"
-        required
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Mot de passe"
-        className="w-full px-3 py-2 border rounded"
-      />
+    <div className="max-w-md mx-auto mt-12 p-8 bg-white rounded-3xl shadow-lg space-y-6 animate-fade-in-up">
       <button
-        type="submit"
-        className="w-full bg-blue-600 text-white py-2 rounded font-bold"
-        disabled={loading}
+        onClick={() => navigate("/login")}
+        className="absolute top-4 left-4 text-blue-600 hover:underline text-sm"
+        tabIndex={-1}
       >
-        {loading ? "Création..." : "Créer mon compte société"}
+        ← Retour à la connexion
       </button>
-      {message && <div className="text-center mt-2">{message}</div>}
-    </form>
+
+      <h1 className="text-3xl font-extrabold text-center text-blue-700">
+        Créer une société & compte admin
+      </h1>
+
+      {message && (
+        <div
+          className={`p-3 rounded text-center font-semibold ${
+            message.type === "error"
+              ? "bg-red-100 text-red-700"
+              : "bg-green-100 text-green-700"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      <form onSubmit={handleSignup} className="space-y-4">
+        <input
+          type="text"
+          placeholder="Nom de la société"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          required
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          disabled={loading}
+          autoFocus
+        />
+
+        <input
+          type="text"
+          placeholder="Votre nom/prénom"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          disabled={loading}
+        />
+
+        <input
+          type="email"
+          placeholder="Email de l'admin"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          disabled={loading}
+        />
+
+        <input
+          type="password"
+          placeholder="Mot de passe (8 caractères minimum)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={8}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          disabled={loading}
+          autoComplete="new-password"
+        />
+
+        <input
+          type="password"
+          placeholder="Confirmer le mot de passe"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          minLength={8}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          disabled={loading}
+          autoComplete="new-password"
+        />
+
+        <button
+          type="submit"
+          disabled={!isFormValid || loading}
+          className={`w-full py-3 rounded-xl font-bold text-white transition ${
+            isFormValid && !loading
+              ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+              : "bg-gray-400 cursor-not-allowed"
+          }`}
+        >
+          {loading ? "Création en cours..." : "Créer mon compte société"}
+        </button>
+      </form>
+    </div>
   );
 }

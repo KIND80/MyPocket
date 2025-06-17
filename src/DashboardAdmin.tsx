@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
+import AjouterContact from "./AjouterContact";
+import ImportCSV from "./ImportCSV";
+import GestionAgents from "./GestionAgents";
 
 // Types
 type AgentStat = {
@@ -22,6 +25,7 @@ type Contact = {
   agent_id: string;
   rdv_date: string;
   statut: string;
+  agent?: { id: string; name: string; email: string }; // pour jointure
 };
 
 type Appel = {
@@ -32,6 +36,7 @@ type Appel = {
   commentaire: string | null;
   statut_appel: string;
   admin_validation?: string | null;
+  agent?: { name?: string; email?: string }; // pour jointure
 };
 
 type Agent = {
@@ -40,27 +45,73 @@ type Agent = {
   email: string;
 };
 
-export default function DashboardAdmin() {
+type DashboardAdminProps = {
+  userId: string;
+};
+
+const tabs = [
+  { key: "contacts", label: "👥 Contacts" },
+  { key: "agents", label: "🧑‍💼 Agents" },
+  { key: "stats", label: "📊 Statistiques & validations" },
+];
+
+export default function DashboardAdmin({ userId }: DashboardAdminProps) {
   const [stats, setStats] = useState<AgentStat[]>([]);
   const [contactsAValider, setContactsAValider] = useState<Contact[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [appelHistory, setAppelHistory] = useState<Appel[]>([]);
-  const [activeTab, setActiveTab] = useState<"stats" | "historique">("stats");
+  const [activeTab, setActiveTab] = useState<"contacts" | "agents" | "stats">(
+    "stats"
+  );
   const [userName, setUserName] = useState<string>("");
+  const [companyId, setCompanyId] = useState<string>("");
 
+  // 1. Chargement de l'utilisateur pour récupérer le companyId
   useEffect(() => {
+    const fetchUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      if (error) {
+        console.error("Erreur récupération utilisateur :", error.message);
+      } else {
+        setUserName(data?.name || data?.prenom || "Admin");
+        setCompanyId(data?.company_id || "");
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // 2. Chargement des données de la société courante
+  useEffect(() => {
+    if (!companyId) return;
     const fetchData = async () => {
+      // AGENTS de la société
       const { data: users } = await supabase
         .from("users")
         .select("id, name, email")
-        .eq("role", "agent");
+        .eq("role", "agent")
+        .eq("company_id", companyId);
 
+      // HISTORIQUE d'appels filtré sur company
       const { data: calls } = await supabase
         .from("call_history")
-        .select("*")
+        .select("*, agent:agent_id (name, email)")
+        .eq("company_id", companyId)
         .order("date", { ascending: false });
 
-      const { data: contacts } = await supabase.from("contacts").select("*");
+      // CONTACTS de la société
+      const { data: contacts } = await supabase
+        .from("contacts")
+        .select("*, agent:agent_id (id, name, email)")
+        .eq("company_id", companyId);
 
       if (!users || !calls || !contacts) return;
 
@@ -68,7 +119,6 @@ export default function DashboardAdmin() {
         const appels = calls.filter((c) => c.agent_id === agent.id);
         const total_appels = appels.length;
 
-        // 🔥 Correction ici : on ne compte que les signatures validées par l’admin
         const signatures = appels.filter(
           (a) =>
             a.statut_appel === "signature" && a.admin_validation === "validée"
@@ -101,44 +151,13 @@ export default function DashboardAdmin() {
       setStats(finalStats);
       setAgents(users);
       setAppelHistory(calls);
-    };
-
-    const fetchContactsAValider = async () => {
-      const { data } = await supabase
-        .from("contacts")
-        .select("*")
-        .eq("statut", "à_valider");
-
-      if (data) setContactsAValider(data);
-    };
-
-    const fetchUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const user = session?.user;
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (error) {
-        console.error("Erreur récupération utilisateur :", error.message);
-      } else {
-        setUserName(data?.name || data?.prenom || "Admin");
-      }
+      setContactsAValider(contacts.filter((c) => c.statut === "à_valider"));
     };
 
     fetchData();
-    fetchContactsAValider();
-    fetchUser();
-  }, []);
+  }, [companyId]);
 
-  // Valider => assigne à l'agent et valide le dernier call_history
+  // 3. Fonctions de validation des contacts
   const validerContact = async (id: string, agentId: string) => {
     await supabase
       .from("contacts")
@@ -149,7 +168,6 @@ export default function DashboardAdmin() {
       })
       .eq("id", id);
 
-    // Appelle la fonction RPC Supabase
     await supabase.rpc("update_latest_call_validation", {
       contact_id_input: id,
       validation_status: "validée",
@@ -158,7 +176,6 @@ export default function DashboardAdmin() {
     setContactsAValider((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Refuser => retour portefeuille global, met admin_validation à "refusée"
   const archiverContact = async (id: string) => {
     await supabase
       .from("contacts")
@@ -170,7 +187,6 @@ export default function DashboardAdmin() {
       })
       .eq("id", id);
 
-    // Appelle la fonction RPC Supabase
     await supabase.rpc("update_latest_call_validation", {
       contact_id_input: id,
       validation_status: "refusée",
@@ -179,262 +195,233 @@ export default function DashboardAdmin() {
     setContactsAValider((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Top 3 agents par taux de signature
   const topPerformers = [...stats]
     .sort((a, b) => b.taux_signature - a.taux_signature)
     .slice(0, 3);
 
+  // Helper pour les médailles
+  const medal = (i: number) =>
+    i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "";
+
   return (
-    <div
-      style={{
-        padding: 20,
-        fontFamily: "Arial",
-        maxWidth: 1000,
-        margin: "auto",
-      }}
-    >
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 20,
-          flexWrap: "wrap",
-        }}
-      >
-        <h1 style={{ fontSize: "1.6rem", marginBottom: 10 }}>
-          👑 Tableau de bord Admin — Bonjour {userName}
-        </h1>
+    <div className="max-w-6xl mx-auto p-4 font-sans">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-7">
+        <div className="flex items-center gap-3">
+          <img
+            src="https://api.dicebear.com/7.x/pixel-art/svg?seed=John
+            "
+            alt=""
+            className="w-12 h-12 rounded-full bg-white p-2 shadow"
+          />
+          <h1 className="text-2xl font-bold text-blue-900 dark:text-blue-200">
+            👑 Tableau de bord Admin — Bonjour {userName}
+          </h1>
+        </div>
         <button
           onClick={() => supabase.auth.signOut()}
-          style={actionBtnStyle("#f44336")}
+          className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-xl shadow font-bold flex items-center gap-1 transition"
         >
           🔒 Déconnexion
         </button>
-      </header>
-
-      <section style={{ marginBottom: 30 }}>
-        <h2>🏆 Top 3 Agents par taux de signature</h2>
-        {topPerformers.length === 0 ? (
-          <p>Aucun agent disponible.</p>
-        ) : (
-          <ul
-            style={{ display: "flex", gap: 20, padding: 0, listStyle: "none" }}
-          >
-            {topPerformers.map((agent) => (
-              <li
-                key={agent.id}
-                style={{
-                  backgroundColor: "#e6f4ea",
-                  borderRadius: 8,
-                  padding: 15,
-                  flex: "1 1 0",
-                  boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-                }}
-              >
-                <div style={{ fontWeight: "bold", fontSize: 18 }}>
-                  {agent.name}
-                </div>
-                <div>Email : {agent.email}</div>
-                <div>
-                  Taux de signature :{" "}
-                  <span style={{ fontWeight: "bold" }}>
-                    {agent.taux_signature.toFixed(1)}%
-                  </span>
-                </div>
-                <div>Appels : {agent.total_appels}</div>
-                <div>À valider : {agent.a_valider}</div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <div style={{ marginBottom: 20 }}>
-        <button
-          onClick={() => setActiveTab("stats")}
-          style={tabStyle(activeTab === "stats", "#4CAF50")}
-        >
-          📊 Statistiques & validations
-        </button>
-        <button
-          onClick={() => setActiveTab("historique")}
-          style={tabStyle(activeTab === "historique", "#2196F3")}
-        >
-          📄 Historique par agent
-        </button>
       </div>
 
-      {activeTab === "stats" && (
-        <>
-          <h2>📊 Statistiques des agents</h2>
-          <table
-            style={{ width: "100%", borderCollapse: "collapse", marginTop: 20 }}
+      {/* Onglets */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as any)}
+            className={`px-4 py-2 rounded-xl font-semibold shadow transition
+              ${
+                activeTab === tab.key
+                  ? "bg-blue-600 text-white scale-105"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-blue-100"
+              }`}
           >
-            <thead>
-              <tr>
-                <th style={cellStyle}>Nom</th>
-                <th style={cellStyle}>Email</th>
-                <th style={cellStyle}>Appels</th>
-                <th style={cellStyle}>Signatures</th>
-                <th style={cellStyle}>Non signatures</th>
-                <th style={cellStyle}>À valider</th>
-                <th style={cellStyle}>Taux signature %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.map((agent) => (
-                <tr key={agent.id}>
-                  <td style={cellStyle}>{agent.name}</td>
-                  <td style={cellStyle}>{agent.email}</td>
-                  <td style={cellStyle}>{agent.total_appels}</td>
-                  <td style={cellStyle}>{agent.signatures}</td>
-                  <td style={cellStyle}>{agent.non_signatures}</td>
-                  <td style={cellStyle}>{agent.a_valider}</td>
-                  <td style={cellStyle}>{agent.taux_signature.toFixed(1)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-          <h2 style={{ marginTop: 40, color: "#444" }}>
-            📌 Contacts en attente de validation
-          </h2>
-          {contactsAValider.length === 0 ? (
-            <p>Aucun contact à valider.</p>
-          ) : (
-            <ul
-              style={{
-                listStyle: "none",
-                paddingLeft: 0,
-                display: "grid",
-                gap: 10,
-              }}
-            >
-              {contactsAValider.map((c) => {
-                const dernierAppel = appelHistory.find(
-                  (a) => a.contact_id === c.id && a.commentaire
-                );
-                return (
-                  <li
-                    key={c.id}
-                    style={{
-                      border: "1px solid #ddd",
-                      padding: 16,
-                      borderRadius: 8,
-                      backgroundColor: "#fafafa",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                    }}
-                  >
-                    <div style={{ fontWeight: "bold" }}>
-                      {c.nom} — 📞 {c.telephone}
-                    </div>
-                    <div>
-                      🏠 {c.adresse || "—"} {c.npa || ""}
-                    </div>
-                    <div>
-                      📅 RDV :{" "}
-                      {c.rdv_date
-                        ? new Date(c.rdv_date).toLocaleDateString("fr-FR")
-                        : "Non défini"}
-                    </div>
-                    {dernierAppel && (
-                      <div
-                        style={{
-                          marginTop: 8,
-                          fontStyle: "italic",
-                          color: "#444",
-                        }}
-                      >
-                        📝 Dernier commentaire : {dernierAppel.commentaire}
-                      </div>
-                    )}
-                    <div style={{ marginTop: 10 }}>
-                      <button
-                        onClick={() => validerContact(c.id, c.agent_id)}
-                        style={actionBtnStyle("#4CAF50")}
-                      >
-                        ✅ Valider
-                      </button>
-                      <button
-                        onClick={() => archiverContact(c.id)}
-                        style={actionBtnStyle("#f44336")}
-                      >
-                        ❌ Refuser
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+      {/* ONGLET 1 : Contacts */}
+      {activeTab === "contacts" && (
+        <div className="space-y-8">
+          {!companyId && (
+            <div className="text-red-600 font-semibold text-center">
+              ⚠️ Aucune société sélectionnée. Merci de configurer un companyId
+              pour cet utilisateur admin.
+            </div>
           )}
-        </>
+          {companyId && (
+            <>
+              {/* Import CSV */}
+              <section>
+                <h2 className="text-lg font-bold mb-3 text-green-700 flex items-center gap-2">
+                  📥 Import CSV
+                </h2>
+                <ImportCSV entrepriseId={companyId} onSuccess={() => {}} />
+              </section>
+
+              {/* Ajouter un contact */}
+              <section>
+                <h2 className="text-lg font-bold mb-3 text-purple-700 flex items-center gap-2">
+                  ➕ Ajouter un contact
+                </h2>
+                <AjouterContact entrepriseId={companyId} onSuccess={() => {}} />
+              </section>
+            </>
+          )}
+        </div>
       )}
 
-      {activeTab === "historique" && (
-        <div>
-          <h2>📄 Historique des validations par agent</h2>
-          {agents.map((agent) => {
-            const historiques = appelHistory.filter(
-              (a) => a.agent_id === agent.id && a.commentaire
-            );
-            if (historiques.length === 0) return null;
-            return (
-              <div
-                key={agent.id}
-                style={{
-                  border: "1px solid #ccc",
-                  borderRadius: 6,
-                  padding: 15,
-                  marginBottom: 20,
-                  backgroundColor: "#f9f9f9",
-                }}
-              >
-                <h3>👤 {agent.name}</h3>
-                <ul>
-                  {historiques.map((h) => (
-                    <li key={h.id}>
-                      📅 {new Date(h.date).toLocaleString("fr-FR")} — 🗣️{" "}
-                      <strong>{h.commentaire}</strong>
+      {/* ONGLET 2 : Agents (toujours affiché même sans companyId) */}
+      {activeTab === "agents" && <GestionAgents companyId={companyId || ""} />}
+
+      {/* ONGLET 3 : Statistiques & validations */}
+      {activeTab === "stats" && (
+        <>
+          {/* TOP 3 Agents */}
+          <section className="mb-8">
+            <h2 className="text-xl font-bold mb-4 text-blue-700 flex items-center gap-2">
+              🏆 Top 3 Agents par taux de signature
+            </h2>
+            <div className="flex flex-wrap gap-6">
+              {topPerformers.length === 0 ? (
+                <p className="text-gray-500">Aucun agent disponible.</p>
+              ) : (
+                topPerformers.map((agent, i) => (
+                  <div
+                    key={agent.id}
+                    className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded-2xl p-5 shadow w-full sm:w-80 flex flex-col gap-2 items-center"
+                  >
+                    <div className="text-3xl">{medal(i)}</div>
+                    <div className="text-lg font-bold">{agent.name}</div>
+                    <div className="text-gray-600 dark:text-gray-200">
+                      {agent.email}
+                    </div>
+                    <div>
+                      <span className="font-semibold">Taux de signature :</span>{" "}
+                      <span className="text-blue-600 font-bold">
+                        {agent.taux_signature.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div>Appels : {agent.total_appels}</div>
+                    <div>À valider : {agent.a_valider}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          {/* Contacts à valider */}
+          <section>
+            <h2 className="text-xl font-bold mb-4 text-purple-700 flex items-center gap-2">
+              📌 Contacts à valider
+            </h2>
+            {contactsAValider.length === 0 ? (
+              <p className="text-gray-500">Aucun contact à valider.</p>
+            ) : (
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {contactsAValider.map((c) => {
+                  const dernierAppel = appelHistory.find(
+                    (a) => a.contact_id === c.id && a.commentaire
+                  );
+                  return (
+                    <li
+                      key={c.id}
+                      className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow flex flex-col gap-2"
+                    >
+                      <div className="text-lg font-bold">
+                        {c.nom} —{" "}
+                        <span className="text-blue-600">{c.telephone}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold">🏠 Adresse :</span>{" "}
+                        {c.adresse || "—"} {c.npa || ""}
+                      </div>
+                      <div>
+                        <span className="font-semibold">📅 RDV :</span>{" "}
+                        {c.rdv_date
+                          ? new Date(c.rdv_date).toLocaleDateString("fr-FR")
+                          : "Non défini"}
+                      </div>
+                      <div>
+                        <span className="font-semibold">👤 Agent :</span>{" "}
+                        {c.agent?.name || "—"} ({c.agent?.email || "—"})
+                      </div>
+                      {dernierAppel && (
+                        <div className="italic text-gray-500 dark:text-gray-300">
+                          📝 {dernierAppel.commentaire}
+                        </div>
+                      )}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => validerContact(c.id, c.agent_id)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold shadow transition"
+                        >
+                          ✅ Valider
+                        </button>
+                        <button
+                          onClick={() => archiverContact(c.id)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold shadow transition"
+                        >
+                          ❌ Refuser
+                        </button>
+                      </div>
                     </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {/* Historique par agent */}
+          <section className="mt-10">
+            <h2 className="text-xl font-bold mb-4 text-blue-700">
+              📄 Historique des validations par agent
+            </h2>
+            <div className="space-y-5">
+              {agents.map((agent) => {
+                const historiques = appelHistory.filter(
+                  (a) => a.agent_id === agent.id && a.commentaire
+                );
+                if (historiques.length === 0) return null;
+                return (
+                  <div
+                    key={agent.id}
+                    className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow"
+                  >
+                    <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                      👤 {agent.name}
+                    </h3>
+                    <ul className="list-disc ml-5 space-y-1 text-gray-800 dark:text-gray-200">
+                      {historiques.map((h) => (
+                        <li key={h.id}>
+                          <span className="font-semibold">
+                            {new Date(h.date).toLocaleString("fr-FR")}
+                          </span>{" "}
+                          — 🗣️ <span>{h.commentaire}</span>
+                          {h.statut_appel && (
+                            <span className="ml-2 text-xs italic text-blue-600">
+                              [{h.statut_appel}]
+                            </span>
+                          )}
+                          {typeof h.admin_validation === "string" && (
+                            <span className="ml-2 text-xs italic text-green-600">
+                              ({h.admin_validation})
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </>
       )}
     </div>
   );
 }
-
-const cellStyle: React.CSSProperties = {
-  borderBottom: "1px solid #e0e0e0",
-  padding: "12px 8px",
-  fontSize: "0.95rem",
-  backgroundColor: "#fff",
-};
-
-const tabStyle = (isActive: boolean, color: string): React.CSSProperties => ({
-  marginRight: 10,
-  padding: "10px 16px",
-  backgroundColor: isActive ? color : "#f0f0f0",
-  color: isActive ? "#fff" : "#333",
-  fontWeight: isActive ? "bold" : "normal",
-  border: "none",
-  borderRadius: 8,
-  cursor: "pointer",
-  transition: "all 0.2s ease-in-out",
-});
-
-const actionBtnStyle = (bg: string): React.CSSProperties => ({
-  marginRight: 10,
-  backgroundColor: bg,
-  color: "#fff",
-  border: "none",
-  padding: "8px 14px",
-  fontWeight: "bold",
-  borderRadius: 6,
-  cursor: "pointer",
-  transition: "0.2s",
-});

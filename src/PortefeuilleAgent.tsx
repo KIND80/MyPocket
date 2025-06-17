@@ -30,6 +30,8 @@ function MesNotes({ agentId }: { agentId: string }) {
     { id: string; note: string; created_at: string }[]
   >([]);
   const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
 
   const fetchNotes = async () => {
     const { data } = await supabase
@@ -42,24 +44,29 @@ function MesNotes({ agentId }: { agentId: string }) {
 
   useEffect(() => {
     fetchNotes();
-    // Facultatif: recharger à intervalle régulier
-    // const interval = setInterval(fetchNotes, 10000);
-    // return () => clearInterval(interval);
   }, [agentId]);
 
   const handleAddNote = async () => {
     if (!note.trim()) return;
+    setLoading(true);
     await supabase.from("user_notes").insert({
       agent_id: agentId,
       note: note.trim(),
     });
     setNote("");
-    fetchNotes();
+    setMsg("Note ajoutée !");
+    await fetchNotes();
+    setLoading(false);
+    setTimeout(() => setMsg(""), 2000);
   };
 
   const handleDeleteNote = async (id: string) => {
+    setLoading(true);
     await supabase.from("user_notes").delete().eq("id", id);
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    setMsg("Note supprimée !");
+    setLoading(false);
+    setTimeout(() => setMsg(""), 2000);
   };
 
   return (
@@ -72,14 +79,17 @@ function MesNotes({ agentId }: { agentId: string }) {
           onChange={(e) => setNote(e.target.value)}
           placeholder="Ajouter une note ou un rappel perso…"
           rows={2}
+          disabled={loading}
         />
         <button
           onClick={handleAddNote}
           className="bg-blue-500 text-white px-3 py-2 rounded font-bold"
+          disabled={loading || !note.trim()}
         >
           Ajouter
         </button>
       </div>
+      {msg && <div className="text-green-600 mb-2 text-sm">{msg}</div>}
       {notes.length === 0 ? (
         <p className="text-gray-400 text-sm">Aucune note pour le moment.</p>
       ) : (
@@ -93,6 +103,7 @@ function MesNotes({ agentId }: { agentId: string }) {
               <button
                 onClick={() => handleDeleteNote(n.id)}
                 className="text-red-400 hover:text-red-700 text-xs ml-2"
+                disabled={loading}
               >
                 Supprimer
               </button>
@@ -113,14 +124,19 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   const [editValues, setEditValues] = useState<
     Record<string, Partial<Contact>>
   >({});
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
 
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 4000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line
   }, [agentId]);
 
+  // ---- MISE A JOUR callHistory après chaque modif ----
   const fetchData = async () => {
+    setLoading(true);
     const { data: contactData } = await supabase
       .from("contacts")
       .select("*")
@@ -143,6 +159,7 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
 
     setContacts(contactData || []);
     setCallHistory(formattedAppels);
+    setLoading(false);
   };
 
   const contactsAvecRDV = contacts.filter((c) => {
@@ -162,9 +179,11 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   ) => {
     const commentaireTexte = commentaire[contactId]?.trim();
     if (!commentaireTexte) {
-      alert("Merci de saisir un commentaire avant de valider.");
+      setMsg("Merci de saisir un commentaire avant de valider.");
+      setTimeout(() => setMsg(""), 2000);
       return;
     }
+    setLoading(true);
 
     await supabase
       .from("contacts")
@@ -180,12 +199,20 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
     });
 
     setCommentaire((prev) => ({ ...prev, [contactId]: "" }));
-    await fetchData();
+    setMsg("Envoyé pour validation !");
+    await fetchData(); // <-- recharge à jour
+    setLoading(false);
+    setTimeout(() => setMsg(""), 2000);
   };
 
   const ajouterCommentaire = async (contactId: string) => {
     const texte = commentaire[contactId]?.trim();
-    if (!texte) return alert("Merci de saisir un commentaire.");
+    if (!texte) {
+      setMsg("Merci de saisir un commentaire.");
+      setTimeout(() => setMsg(""), 2000);
+      return;
+    }
+    setLoading(true);
     await supabase.from("call_history").insert({
       contact_id: contactId,
       agent_id: agentId,
@@ -193,29 +220,35 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
       commentaire: texte,
     });
     setCommentaire((prev) => ({ ...prev, [contactId]: "" }));
-    await fetchData();
+    setMsg("Commentaire ajouté !");
+    await fetchData(); // <-- recharge à jour
+    setLoading(false);
+    setTimeout(() => setMsg(""), 2000);
   };
 
   const handleSave = async (id: string) => {
     const updates = editValues[id];
     if (!updates) return;
-
+    setLoading(true);
     const { error } = await supabase
       .from("contacts")
       .update(updates)
       .eq("id", id);
 
     if (error) {
-      alert("Erreur lors de la mise à jour");
+      setMsg("Erreur lors de la mise à jour");
+      setTimeout(() => setMsg(""), 2000);
     } else {
       setEditMode((prev) => ({ ...prev, [id]: false }));
       setEditValues((prev) => ({ ...prev, [id]: {} }));
+      setMsg("Contact mis à jour !");
       await fetchData();
+      setTimeout(() => setMsg(""), 2000);
     }
+    setLoading(false);
   };
 
   const renderContactCard = (c: Contact) => {
-    // Historique complet pour ce contact (le plus récent en haut)
     const historique = callHistory
       .filter((h) => h.contact_id === c.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -242,14 +275,12 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
               c.nom
             )}
           </h2>
-          {/* BADGE VALIDÉ */}
           {c.statut === "assigné" && (
             <span className="inline-flex items-center px-3 py-1 bg-green-500 text-white rounded-full text-xs font-bold animate-pulse ml-2">
               ✅ Validé
             </span>
           )}
         </div>
-
         <p>
           <strong>📞 Téléphone :</strong>{" "}
           {editing ? (
@@ -267,7 +298,6 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
             c.telephone
           )}
         </p>
-
         <p>
           <strong>📋 Catégorie :</strong>{" "}
           {editing ? (
@@ -285,7 +315,6 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
             c.categorie_contact
           )}
         </p>
-
         <p>
           <strong>🛡️ Assurance :</strong>{" "}
           {editing ? (
@@ -303,7 +332,6 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
             c.type_assurance
           )}
         </p>
-
         <p>
           <strong>🏠 Adresse :</strong>{" "}
           {editing ? (
@@ -328,6 +356,7 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
               <button
                 onClick={() => handleSave(c.id)}
                 className="mr-2 bg-blue-500 text-white px-3 py-1 rounded"
+                disabled={loading}
               >
                 💾 Enregistrer
               </button>
@@ -336,6 +365,7 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
                   setEditMode((prev) => ({ ...prev, [c.id]: false }))
                 }
                 className="bg-gray-300 px-3 py-1 rounded"
+                disabled={loading}
               >
                 ❌ Annuler
               </button>
@@ -344,13 +374,13 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
             <button
               onClick={() => setEditMode((prev) => ({ ...prev, [c.id]: true }))}
               className="bg-yellow-400 text-black px-3 py-1 rounded"
+              disabled={loading}
             >
               ✏️ Modifier
             </button>
           )}
         </div>
 
-        {/* Champ commentaire + bouton, toujours visible */}
         <div className="flex gap-2 mt-2">
           <textarea
             placeholder="Ajouter un commentaire ici..."
@@ -360,28 +390,29 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
             }
             className="w-full border rounded px-2 py-1"
             rows={2}
+            disabled={loading}
           />
           <button
             onClick={() => ajouterCommentaire(c.id)}
             className="bg-blue-500 text-white px-4 py-2 rounded font-bold"
+            disabled={loading || !commentaire[c.id]?.trim()}
           >
             Envoyer
           </button>
         </div>
 
-        {/* Signature/Non Signature : seulement si statut = rdv */}
         {c.statut === "rdv" && (
           <div className="mt-3">
             <button
               onClick={() => validerSignature(c.id, "Signature")}
-              disabled={!commentaire[c.id]?.trim()}
+              disabled={loading || !commentaire[c.id]?.trim()}
               className="bg-green-500 text-white px-4 py-2 rounded mr-2 disabled:opacity-50"
             >
               ✅ Signature
             </button>
             <button
               onClick={() => validerSignature(c.id, "Non Signature")}
-              disabled={!commentaire[c.id]?.trim()}
+              disabled={loading || !commentaire[c.id]?.trim()}
               className="bg-red-500 text-white px-4 py-2 rounded disabled:opacity-50"
             >
               ❌ Non Signature
@@ -389,7 +420,6 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           </div>
         )}
 
-        {/* Historique avec scrolling */}
         <div
           className="mt-4 bg-gray-100 p-3 rounded"
           style={{ maxHeight: 200, overflowY: "auto" }}
@@ -430,6 +460,13 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
       <h1 className="text-2xl font-bold mb-6 text-center">
         📁 Mon portefeuille
       </h1>
+
+      {msg && <div className="mb-4 text-center text-green-600">{msg}</div>}
+      {loading && (
+        <div className="mb-6 text-center text-blue-500 font-semibold">
+          Chargement...
+        </div>
+      )}
 
       <h2 className="text-lg font-semibold mb-2">
         📌 Contacts à suivre (RDV + commentaire)

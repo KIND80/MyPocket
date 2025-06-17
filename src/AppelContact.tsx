@@ -27,11 +27,24 @@ export default function AppelContact({ agentId }: { agentId: string }) {
   const [search, setSearch] = useState("");
   const [categorie, setCategorie] = useState("");
   const [current, setCurrent] = useState<Contact | null>(null);
-  const [etatAppel, setEtatAppel] = useState<"init" | "en_cours" | "oui">("init");
+  const [etatAppel, setEtatAppel] = useState<"init" | "en_cours" | "oui">(
+    "init"
+  );
   const [historique, setHistorique] = useState<Appel[]>([]);
   const [commentaire, setCommentaire] = useState("");
   const [edition, setEdition] = useState(false);
   const [form, setForm] = useState<Partial<Contact>>({});
+
+  // --- Nouvelle fonction factorisée ---
+  const fetchHistorique = async (contactId: string) => {
+    const { data } = await supabase
+      .from("call_history")
+      .select("id, date, statut_appel, commentaire")
+      .eq("contact_id", contactId)
+      .order("date", { ascending: false })
+      .limit(3);
+    setHistorique(data || []);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,7 +62,6 @@ export default function AppelContact({ agentId }: { agentId: string }) {
   // Recherche sur nom ET téléphone
   useEffect(() => {
     let filtres = [...contacts];
-
     if (search.trim()) {
       const searchLower = search.toLowerCase().replace(/\s/g, "");
       filtres = filtres.filter(
@@ -58,11 +70,9 @@ export default function AppelContact({ agentId }: { agentId: string }) {
           c.telephone.replace(/\s/g, "").includes(searchLower)
       );
     }
-
     if (categorie) {
       filtres = filtres.filter((c) => c.categorie_contact === categorie);
     }
-
     setFiltered(filtres);
   }, [search, categorie, contacts]);
 
@@ -78,18 +88,10 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     }
   }, [filtered]);
 
+  // Historique toujours à jour pour le contact courant
   useEffect(() => {
-    const fetchHistorique = async () => {
-      if (!current) return;
-      const { data } = await supabase
-        .from("call_history")
-        .select("id, date, statut_appel, commentaire")
-        .eq("contact_id", current.id)
-        .order("date", { ascending: false })
-        .limit(3);
-      setHistorique(data || []);
-    };
-    fetchHistorique();
+    if (current) fetchHistorique(current.id);
+    else setHistorique([]);
   }, [current]);
 
   const handleLogout = async () => {
@@ -97,7 +99,6 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     navigate("/login");
   };
 
-  // === Enregistre selon le statut ===
   const enregistrerAppel = async (
     statut: "note" | "non_signature" | "rdv" | "appel",
     commentaireFinal: string
@@ -109,9 +110,10 @@ export default function AppelContact({ agentId }: { agentId: string }) {
       statut_appel: statut,
       commentaire: commentaireFinal,
     });
+    // 👇 Recharge l'historique tout de suite après
+    await fetchHistorique(current.id);
   };
 
-  // Bouton passer
   const handlePasser = async () => {
     if (current) {
       await enregistrerAppel("appel", "Contact passé sans appel");
@@ -119,17 +121,14 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     nextContact();
   };
 
-  // Bouton injoignable
   const handleInjoignable = async () => {
     await enregistrerAppel("non_signature", "Injoignable");
     nextContact();
   };
 
-  // Bouton RDV
   const handleRdv = async () => {
     if (!current || !commentaire.trim()) return;
     await enregistrerAppel("rdv", commentaire.trim());
-
     await supabase
       .from("contacts")
       .update({
@@ -146,7 +145,6 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     nextContact();
   };
 
-  // Bouton valider (note simple)
   const handleValiderCommentaire = async () => {
     if (!current || !commentaire.trim()) return;
     await enregistrerAppel("note", commentaire.trim());
@@ -175,9 +173,9 @@ export default function AppelContact({ agentId }: { agentId: string }) {
 
   if (!current) {
     return (
-      <p className="text-center py-10">
+      <div className="text-center py-10 text-lg text-gray-600 dark:text-gray-300">
         📭 Aucun contact pour le moment. Revenez plus tard.
-      </p>
+      </div>
     );
   }
 
@@ -186,69 +184,59 @@ export default function AppelContact({ agentId }: { agentId: string }) {
   )}`;
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">📂 Portefeuille Global</h2>
+    <div className="max-w-2xl mx-auto p-3 sm:p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 flex items-center gap-1">
+            📂 Portefeuille Global
+          </h2>
+        </div>
         <button
           onClick={handleLogout}
-          className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+          className="bg-gray-700 hover:bg-gray-900 text-white px-4 py-2 rounded-xl shadow transition font-bold flex items-center gap-1"
         >
           🔓 Déconnexion
         </button>
       </div>
 
-      <div className="flex flex-col gap-2 mb-4 sm:flex-row">
-        <input
-          type="text"
-          placeholder="🔍 Rechercher par nom ou numéro"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-3 py-2 border rounded"
-        />
-        <select
-          value={categorie}
-          onChange={(e) => setCategorie(e.target.value)}
-          className="flex-1 px-3 py-2 border rounded"
-        >
-          <option value="">Toutes les catégories</option>
-          <option value="phoning">Phoning</option>
-          <option value="subside">Subside</option>
-        </select>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg shadow space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img
-              src={avatarUrl}
-              alt="avatar"
-              className="w-14 h-14 rounded-full"
-            />
-            <div>
-              {edition ? (
-                <input
-                  value={form.nom || ""}
-                  onChange={(e) => setForm({ ...form, nom: e.target.value })}
-                  className="border rounded px-2 py-1"
-                />
-              ) : (
-                <>
-                  <h3 className="text-lg font-semibold">{current.nom}</h3>
-                  <p className="text-sm text-gray-600">{current.telephone}</p>
-                </>
-              )}
-            </div>
+      {/* Fiche contact */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl px-4 py-5 sm:px-8 mb-4 animate-fade-in-up">
+        {/* Infos principales */}
+        <div className="flex flex-col sm:flex-row gap-5 items-center mb-4">
+          <img
+            src={avatarUrl}
+            alt="avatar"
+            className="w-16 h-16 rounded-full border-2 border-blue-400 bg-white"
+          />
+          <div className="flex-1 w-full">
+            {edition ? (
+              <input
+                value={form.nom || ""}
+                onChange={(e) => setForm({ ...form, nom: e.target.value })}
+                className="border rounded-xl px-3 py-2 w-full mb-2 text-lg"
+              />
+            ) : (
+              <h3 className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-100">
+                {current.nom}
+              </h3>
+            )}
+            <p className="text-sm text-gray-500 mb-1">{current.telephone}</p>
+            <p className="text-xs text-gray-400 mb-1">
+              {current.categorie_contact}
+            </p>
           </div>
           <button
             onClick={() => setEdition(!edition)}
-            className="text-sm text-gray-600 hover:text-black"
+            className="text-sm text-gray-500 hover:text-blue-700 px-3 py-2 rounded transition"
           >
-            ✏️ Modifier
+            ✏️ {edition ? "Annuler" : "Modifier"}
           </button>
         </div>
 
-        {edition ? (
-          <>
+        {/* Edition étendue */}
+        {edition && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             {["telephone", "adresse", "npa", "canton", "type_assurance"].map(
               (field) => (
                 <input
@@ -258,103 +246,123 @@ export default function AppelContact({ agentId }: { agentId: string }) {
                   onChange={(e) =>
                     setForm({ ...form, [field]: e.target.value })
                   }
-                  className="w-full px-3 py-2 border rounded mb-2"
+                  className="w-full px-3 py-2 border rounded-xl"
                 />
               )
             )}
             <button
               onClick={handleUpdateContact}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 font-bold col-span-2"
             >
               ✅ Sauvegarder
             </button>
-          </>
-        ) : (
-          <div className="text-sm space-y-1">
+          </div>
+        )}
+
+        {/* Données contact */}
+        {!edition && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
             <p>
-              📍 Adresse : {current.adresse}, {current.npa}
+              <span className="font-semibold">📍 Adresse :</span>{" "}
+              {current.adresse}, {current.npa}
             </p>
-            <p>🏷️ Catégorie : {current.categorie_contact}</p>
-            <p>🌍 Canton : {current.canton}</p>
-            <p>🛡️ Assurance : {current.type_assurance || "—"}</p>
+            <p>
+              <span className="font-semibold">🏷️ Catégorie :</span>{" "}
+              {current.categorie_contact}
+            </p>
+            <p>
+              <span className="font-semibold">🌍 Canton :</span>{" "}
+              {current.canton}
+            </p>
+            <p>
+              <span className="font-semibold">🛡️ Assurance :</span>{" "}
+              {current.type_assurance || "—"}
+            </p>
           </div>
         )}
 
-        {/* Étapes d'appel */}
-        {etatAppel === "init" && (
-          <div className="space-x-2">
-            <a href={`tel:${current.telephone}`}>
+        {/* Etapes d'appel */}
+        <div className="my-4">
+          {etatAppel === "init" && (
+            <div className="flex flex-wrap gap-3">
+              <a href={`tel:${current.telephone}`}>
+                <button
+                  onClick={() => setEtatAppel("en_cours")}
+                  className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-blue-700 shadow transition flex items-center gap-2"
+                >
+                  📞 Appeler
+                </button>
+              </a>
               <button
-                onClick={() => setEtatAppel("en_cours")}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                onClick={handlePasser}
+                className="bg-gray-200 text-gray-800 px-5 py-2 rounded-xl font-bold hover:bg-gray-400 shadow transition"
               >
-                📞 Appeler
-              </button>
-            </a>
-            <button
-              onClick={handlePasser}
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-            >
-              ⏭️ Passer
-            </button>
-          </div>
-        )}
-
-        {etatAppel === "en_cours" && (
-          <div className="space-x-2">
-            <button
-              onClick={handleInjoignable}
-              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-            >
-              ❌ Injoignable
-            </button>
-            <button
-              onClick={() => setEtatAppel("oui")}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-            >
-              ✅ Oui
-            </button>
-          </div>
-        )}
-
-        {etatAppel === "oui" && (
-          <div>
-            <textarea
-              value={commentaire}
-              onChange={(e) => setCommentaire(e.target.value)}
-              placeholder="📝 Ajouter un commentaire"
-              className="w-full px-3 py-2 border rounded mb-2"
-            />
-            <div className="space-x-2">
-              <button
-                onClick={handleRdv}
-                disabled={!commentaire.trim()}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                📅 RDV
-              </button>
-              <button
-                onClick={handleValiderCommentaire}
-                disabled={!commentaire.trim()}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 disabled:opacity-50"
-              >
-                📝 Valider
+                ⏭️ Passer
               </button>
             </div>
-          </div>
-        )}
+          )}
+
+          {etatAppel === "en_cours" && (
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleInjoignable}
+                className="bg-red-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-red-700 shadow transition"
+              >
+                ❌ Injoignable
+              </button>
+              <button
+                onClick={() => setEtatAppel("oui")}
+                className="bg-green-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-700 shadow transition"
+              >
+                ✅ Oui
+              </button>
+            </div>
+          )}
+
+          {etatAppel === "oui" && (
+            <div>
+              <textarea
+                value={commentaire}
+                onChange={(e) => setCommentaire(e.target.value)}
+                placeholder="📝 Ajouter un commentaire"
+                className="w-full px-4 py-2 border rounded-xl mb-2"
+              />
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleRdv}
+                  disabled={!commentaire.trim()}
+                  className="bg-blue-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-blue-600 shadow transition disabled:opacity-50 flex items-center gap-1"
+                >
+                  📅 RDV
+                </button>
+                <button
+                  onClick={handleValiderCommentaire}
+                  disabled={!commentaire.trim()}
+                  className="bg-gray-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-gray-600 shadow transition disabled:opacity-50 flex items-center gap-1"
+                >
+                  📝 Valider
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Historique */}
         {historique.length > 0 && (
-          <div>
-            <h4 className="font-semibold mb-2">📞 Derniers appels</h4>
-            <ul className="text-sm list-disc list-inside space-y-1">
+          <div className="mt-4 bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
+            <h4 className="font-bold mb-2 text-blue-800 dark:text-blue-200">
+              📞 Derniers appels
+            </h4>
+            <ul className="text-sm space-y-2">
               {historique.map((appel) => (
-                <li key={appel.id}>
-                  {new Date(appel.date).toLocaleDateString("fr-FR")} —{" "}
-                  {appel.statut_appel}
-                  <br />
-                  📝 {appel.commentaire}
+                <li key={appel.id} className="flex flex-col">
+                  <span className="font-semibold text-gray-800 dark:text-gray-100">
+                    {new Date(appel.date).toLocaleDateString("fr-FR")} —{" "}
+                    {appel.statut_appel}
+                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    📝 {appel.commentaire}
+                  </span>
                 </li>
               ))}
             </ul>

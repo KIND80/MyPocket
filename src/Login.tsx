@@ -1,16 +1,51 @@
 import React, { useState } from "react";
 import { supabase } from "./supabaseClient";
+import { useNavigate, Navigate } from "react-router-dom";
+
+// Mascotte (image wow)
+function Mascotte() {
+  return (
+    <div className="bg-gradient-to-br from-indigo-300 to-blue-200 rounded-full p-2 w-16 h-16 flex items-center justify-center shadow-lg animate-fade-in">
+      <img
+        src="https://api.dicebear.com/7.x/pixel-art/svg?seed=John"
+        alt="Mascotte"
+        className="w-12 h-12"
+        draggable={false}
+      />
+    </div>
+  );
+}
 
 export default function Login({
   onLogin,
+  role,
 }: {
   onLogin: (role: string, userId: string) => void;
+  role?: "admin" | "agent" | null;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const navigate = useNavigate();
+
+  // Utilitaire dark mode persistant
+  const toggleDarkMode = () => {
+    if (document.documentElement.classList.contains("dark")) {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("dark-mode", "off");
+    } else {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("dark-mode", "on");
+    }
+  };
+
+  React.useEffect(() => {
+    if (localStorage.getItem("dark-mode") === "on") {
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,18 +57,13 @@ export default function Login({
       password,
     });
 
-    if (error) {
-      setErrorMsg("Erreur de connexion : " + error.message);
+    if (error || !data.user) {
+      setErrorMsg("Email ou mot de passe incorrect.");
       setLoading(false);
       return;
     }
 
     const user = data.user;
-    if (!user) {
-      setErrorMsg("Utilisateur introuvable.");
-      setLoading(false);
-      return;
-    }
 
     const { data: userData, error: userError } = await supabase
       .from("users")
@@ -42,13 +72,19 @@ export default function Login({
       .single();
 
     if (userError || !userData) {
-      setErrorMsg("Impossible de récupérer le rôle.");
+      setErrorMsg("Erreur lors de la connexion. Contactez l'administrateur.");
       setLoading(false);
       return;
     }
 
     setLoading(false);
-    onLogin(userData.role, user.id);
+    onLogin(userData.role.trim(), user.id);
+
+    if (userData.role.trim() === "admin") {
+      navigate("/admin");
+    } else if (userData.role.trim() === "agent") {
+      navigate("/agent");
+    }
   };
 
   const handlePasswordReset = async () => {
@@ -66,64 +102,105 @@ export default function Login({
     }
   };
 
-  return (
-    <div className="max-w-sm mx-auto p-6 text-center">
-      <h1 className="text-2xl font-bold mb-2">
-        👋 Bienvenue sur <span className="text-blue-600">MyPocket</span>
-      </h1>
-      <p className="text-gray-600 mb-6">
-        Votre outil intelligent pour la gestion des contacts et le phoning
-        efficace.
-      </p>
-
-      <h2 className="text-lg font-semibold mb-4">🔐 Connexion</h2>
-
-      <form onSubmit={handleLogin} className="space-y-3">
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full px-3 py-2 border rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Mot de passe"
-          className="w-full px-3 py-2 border rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+  // ----------- Cœur de la correction : redirection safe ----------- //
+  let content = (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition">
+      <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-3xl shadow-2xl px-8 py-10 text-center relative animate-fade-in-up">
+        {/* Retour home */}
         <button
-          type="submit"
-          className="w-full bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition"
+          onClick={() => navigate("/")}
+          className="absolute top-3 left-3 text-gray-400 hover:text-blue-500 text-xs underline transition"
+          style={{ zIndex: 10 }}
+          tabIndex={-1}
+        >
+          ← Retour site
+        </button>
+
+        <Mascotte />
+
+        <h1 className="text-3xl font-extrabold mb-2 text-blue-900 dark:text-blue-200 flex items-center justify-center gap-2 animate-fade-in">
+          Bienvenue sur{" "}
+          <span className="text-blue-600 dark:text-blue-300">MyPocket</span>
+          <span className="text-xl">✨</span>
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300 mb-5 animate-fade-in-slow">
+          L’outil <span className="font-semibold">intelligent</span> pour gérer
+          tes contacts et booster ton phoning.
+        </p>
+        <h2 className="text-lg font-semibold mb-6 text-blue-800 dark:text-blue-200 animate-fade-in-slow">
+          🔐 Connexion à ton espace
+        </h2>
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="username"
+          />
+          <input
+            type="password"
+            placeholder="Mot de passe"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+          <button
+            type="submit"
+            className="w-full bg-blue-600 dark:bg-blue-700 text-white font-bold py-3 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-800 shadow transition text-lg"
+            disabled={loading}
+          >
+            {loading ? "Connexion en cours..." : "Se connecter"}
+          </button>
+        </form>
+
+        <button
+          onClick={handlePasswordReset}
+          className="mt-3 w-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-2 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition"
           disabled={loading}
         >
-          {loading ? "Connexion en cours..." : "Se connecter"}
+          🔁 Réinitialiser mot de passe
         </button>
-      </form>
 
-      <button
-        onClick={handlePasswordReset}
-        className="mt-3 w-full bg-gray-300 text-gray-800 font-semibold py-2 rounded hover:bg-gray-400"
-      >
-        🔁 Réinitialiser mot de passe
-      </button>
+        {errorMsg && (
+          <p className="text-red-600 mt-3 animate-shake">{errorMsg}</p>
+        )}
+        {resetSent && (
+          <p className="text-green-600 mt-3 animate-fade-in">
+            ✅ Lien de réinitialisation envoyé.
+          </p>
+        )}
 
-      {errorMsg && <p className="text-red-600 mt-3">{errorMsg}</p>}
-      {resetSent && (
-        <p className="text-green-600 mt-3">
-          ✅ Lien de réinitialisation envoyé.
-        </p>
-      )}
+        <div className="mt-8 text-center">
+          <span className="text-gray-600 dark:text-gray-300">
+            Pas encore de compte société ?
+          </span>
+          <button
+            onClick={() => navigate("/signup-company")}
+            className="block mt-2 text-blue-600 dark:text-blue-300 underline font-semibold mx-auto"
+            type="button"
+          >
+            ➕ Créer une société et un compte admin
+          </button>
+        </div>
 
-      <button
-        onClick={() => document.body.classList.toggle("dark-mode")}
-        className="mt-8 w-full bg-gray-700 text-white font-semibold py-2 rounded hover:bg-gray-800"
-      >
-        🌗 Activer/Désactiver le mode sombre contact@monfideleconseiller.ch
-      </button>
+        <button
+          onClick={toggleDarkMode}
+          className="mt-8 w-full bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800 font-bold py-2 rounded-xl hover:bg-gray-900 dark:hover:bg-gray-300 shadow transition"
+        >
+          🌗 Activer/Désactiver le mode sombre
+        </button>
+      </div>
     </div>
   );
+
+  if (role === "admin") content = <Navigate to="/admin" replace />;
+  if (role === "agent") content = <Navigate to="/agent" replace />;
+
+  return content;
 }
