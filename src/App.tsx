@@ -12,6 +12,7 @@ import DashboardAdmin from "./DashboardAdmin";
 import AgentHome from "./AgentHome";
 import SignupCompany from "./SignupCompany";
 import LandingPage from "./LandingPage";
+import ResetPassword from "./ResetPassword"; // <--- Ajout ici
 
 // --- ProtectedRoute : Sécurise toutes les routes sensibles
 function ProtectedRoute({
@@ -93,17 +94,11 @@ export default function App() {
 
   // === LOGS DE DEBUG pour observer tout le flow ===
   useEffect(() => {
-    console.log("DEBUG [App] REDIRECT EFFECT", {
-      loading,
-      role,
-      pathname: location.pathname,
-    });
     if (
       !loading &&
       role === "admin" &&
       (location.pathname === "/login" || location.pathname === "/")
     ) {
-      //console.log("DEBUG [App] REDIRECT -> /admin");
       navigate("/admin", { replace: true });
     }
     if (
@@ -111,18 +106,10 @@ export default function App() {
       role === "agent" &&
       (location.pathname === "/login" || location.pathname === "/")
     ) {
-      //console.log("DEBUG [App] REDIRECT -> /agent");
       navigate("/agent", { replace: true });
     }
     // eslint-disable-next-line
   }, [role, loading, location.pathname]);
-
-  // Log avant le rendu
-  console.log("DEBUG [App] AVANT RETURN", {
-    loading,
-    role,
-    pathname: location.pathname,
-  });
 
   if (loading) {
     return (
@@ -150,13 +137,14 @@ export default function App() {
             onLogin={(r, id) => {
               setRole(r.trim() as "admin" | "agent");
               setUserId(id);
-              // Log pour voir la callback
-              //console.log("DEBUG [App] onLogin callback", r, id);
             }}
             role={role}
           />
         }
       />
+
+      {/* Reset password - accessible sans être connecté */}
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Routes admin protégées */}
       <Route

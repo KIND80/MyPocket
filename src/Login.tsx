@@ -28,9 +28,12 @@ export default function Login({
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [showReset, setShowReset] = useState(false); // NEW
+  const [resetEmail, setResetEmail] = useState(""); // NEW
+  const [resetMsg, setResetMsg] = useState(""); // NEW
   const navigate = useNavigate();
 
-  // Utilitaire dark mode persistant
+  // Dark mode utilitaire
   const toggleDarkMode = () => {
     if (document.documentElement.classList.contains("dark")) {
       document.documentElement.classList.remove("dark");
@@ -64,7 +67,6 @@ export default function Login({
     }
 
     const user = data.user;
-
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("role")
@@ -87,17 +89,22 @@ export default function Login({
     }
   };
 
+  // Nouvelle gestion de reset
   const handlePasswordReset = async () => {
-    setErrorMsg("");
-    setResetSent(false);
-    if (!email) {
-      setErrorMsg("Veuillez entrer votre email pour réinitialiser.");
+    setResetMsg("");
+    if (!resetEmail) {
+      setResetMsg("Veuillez entrer votre email.");
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      resetEmail.trim()
+    );
     if (error) {
-      setErrorMsg("Erreur d'envoi : " + error.message);
+      setResetMsg("Erreur d'envoi : " + error.message);
     } else {
+      setResetMsg(
+        "✅ Un lien de réinitialisation a été envoyé sur votre email."
+      );
       setResetSent(true);
     }
   };
@@ -159,10 +166,12 @@ export default function Login({
           </button>
         </form>
 
+        {/* Nouvelle modale reset */}
         <button
-          onClick={handlePasswordReset}
+          onClick={() => setShowReset(true)}
           className="mt-3 w-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-2 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition"
           disabled={loading}
+          type="button"
         >
           🔁 Réinitialiser mot de passe
         </button>
@@ -196,6 +205,54 @@ export default function Login({
           🌗 Activer/Désactiver le mode sombre
         </button>
       </div>
+
+      {/* ----------- MODALE RESET PASSWORD ---------- */}
+      {showReset && (
+        <div className="fixed z-50 inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-7 shadow-2xl w-full max-w-sm flex flex-col items-center relative animate-fade-in-up">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xl"
+              onClick={() => {
+                setShowReset(false);
+                setResetMsg("");
+                setResetEmail("");
+                setResetSent(false);
+              }}
+              tabIndex={-1}
+            >
+              ×
+            </button>
+            <h2 className="text-lg font-bold mb-3">
+              🔑 Réinitialisation du mot de passe
+            </h2>
+            <input
+              type="email"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl mb-3 bg-white dark:bg-gray-800"
+              placeholder="Votre email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              autoFocus
+              required
+            />
+            <button
+              onClick={handlePasswordReset}
+              className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700 transition mb-2"
+              disabled={loading}
+            >
+              Envoyer le lien
+            </button>
+            {resetMsg && (
+              <div
+                className={
+                  resetMsg.startsWith("✅") ? "text-green-600" : "text-red-600"
+                }
+              >
+                {resetMsg}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 
