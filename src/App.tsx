@@ -12,7 +12,7 @@ import DashboardAdmin from "./DashboardAdmin";
 import AgentHome from "./AgentHome";
 import SignupCompany from "./SignupCompany";
 import LandingPage from "./LandingPage";
-import ResetPassword from "./ResetPassword"; // <--- Ajout ici
+import ResetPassword from "./ResetPassword";
 
 // --- ProtectedRoute : Sécurise toutes les routes sensibles
 function ProtectedRoute({
@@ -92,19 +92,19 @@ export default function App() {
     // eslint-disable-next-line
   }, []);
 
-  // Redirection automatique selon rôle & chemin
+  // Redirection automatique seulement depuis /login si déjà connecté
   useEffect(() => {
     if (
       !loading &&
       role === "admin" &&
-      (location.pathname === "/login" || location.pathname === "/")
+      location.pathname === "/login"
     ) {
       navigate("/admin", { replace: true });
     }
     if (
       !loading &&
       role === "agent" &&
-      (location.pathname === "/login" || location.pathname === "/")
+      location.pathname === "/login"
     ) {
       navigate("/agent", { replace: true });
     }

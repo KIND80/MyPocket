@@ -5,11 +5,6 @@ export default function LandingPage({ role }: { role: string | null }) {
   const navigate = useNavigate();
 
   // Si déjà connecté, redirige automatiquement (pro)
-  useEffect(() => {
-    if (role === "admin") navigate("/admin");
-    if (role === "agent") navigate("/agent");
-    // eslint-disable-next-line
-  }, [role]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-violet-100 font-sans">
