@@ -92,7 +92,7 @@ export default function App() {
     // eslint-disable-next-line
   }, []);
 
-  // === LOGS DE DEBUG pour observer tout le flow ===
+  // Redirection automatique selon rôle & chemin
   useEffect(() => {
     if (
       !loading &&

@@ -28,9 +28,9 @@ export default function Login({
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const [showReset, setShowReset] = useState(false); // NEW
-  const [resetEmail, setResetEmail] = useState(""); // NEW
-  const [resetMsg, setResetMsg] = useState(""); // NEW
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
   const navigate = useNavigate();
 
   // Dark mode utilitaire
@@ -92,6 +92,7 @@ export default function Login({
   // Nouvelle gestion de reset
   const handlePasswordReset = async () => {
     setResetMsg("");
+    setResetSent(false);
     if (!resetEmail) {
       setResetMsg("Veuillez entrer votre email.");
       return;
@@ -179,11 +180,6 @@ export default function Login({
         {errorMsg && (
           <p className="text-red-600 mt-3 animate-shake">{errorMsg}</p>
         )}
-        {resetSent && (
-          <p className="text-green-600 mt-3 animate-fade-in">
-            ✅ Lien de réinitialisation envoyé.
-          </p>
-        )}
 
         <div className="mt-8 text-center">
           <span className="text-gray-600 dark:text-gray-300">
@@ -233,11 +229,15 @@ export default function Login({
               onChange={(e) => setResetEmail(e.target.value)}
               autoFocus
               required
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handlePasswordReset();
+              }}
             />
             <button
               onClick={handlePasswordReset}
               className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700 transition mb-2"
               disabled={loading}
+              type="button"
             >
               Envoyer le lien
             </button>
