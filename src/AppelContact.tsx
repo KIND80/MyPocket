@@ -35,7 +35,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
   const [edition, setEdition] = useState(false);
   const [form, setForm] = useState<Partial<Contact>>({});
 
-  // --- Nouvelle fonction factorisée ---
+  // --- Historique factorisé ---
   const fetchHistorique = async (contactId: string) => {
     const { data } = await supabase
       .from("call_history")
@@ -59,7 +59,7 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     fetchData();
   }, []);
 
-  // Recherche sur nom ET téléphone
+  // Recherche sur nom ET téléphone + filtre catégorie
   useEffect(() => {
     let filtres = [...contacts];
     if (search.trim()) {
@@ -171,6 +171,11 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     setEdition(false);
   };
 
+  // Génère la liste des catégories distinctes (phoning, subside, ...)
+  const categoriesDisponibles = Array.from(
+    new Set(contacts.map((c) => c.categorie_contact).filter(Boolean))
+  );
+
   if (!current) {
     return (
       <div className="text-center py-10 text-lg text-gray-600 dark:text-gray-300">
@@ -185,6 +190,30 @@ export default function AppelContact({ agentId }: { agentId: string }) {
 
   return (
     <div className="max-w-2xl mx-auto p-3 sm:p-6">
+      {/* --- Barre de recherche et filtre catégorie --- */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <input
+          type="text"
+          placeholder="🔎 Rechercher (nom, téléphone)"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full sm:w-72 px-3 py-2 border rounded-xl shadow"
+        />
+        <select
+          value={categorie}
+          onChange={(e) => setCategorie(e.target.value)}
+          className="w-full sm:w-56 px-3 py-2 border rounded-xl shadow"
+        >
+          <option value="">Toutes les catégories</option>
+          {categoriesDisponibles.map((cat) => (
+            <option key={cat} value={cat}>
+              {/* Ici tu peux mettre des labels custom */}
+              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
