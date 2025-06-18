@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 
@@ -6,14 +6,32 @@ export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const [newPassword, setNewPassword] = useState("");
   const [msg, setMsg] = useState("");
+  const [canReset, setCanReset] = useState(false);
   const navigate = useNavigate();
 
-  // Le token de l'utilisateur pour la session recovery
-  React.useEffect(() => {
+  useEffect(() => {
+    // 1. Récupère le token et type de l'URL
+    const token = searchParams.get("token");
     const type = searchParams.get("type");
-    if (type !== "recovery") {
+
+    if (type !== "recovery" || !token) {
       setMsg("Lien de réinitialisation invalide ou expiré.");
+      setCanReset(false);
+      return;
     }
+
+    // 2. Échange le token contre une session
+    (async () => {
+      const { error } = await supabase.auth.exchangeCodeForSession(token);
+      if (error) {
+        setMsg(
+          "Lien expiré ou déjà utilisé. Redemande un nouveau mail de réinitialisation."
+        );
+        setCanReset(false);
+      } else {
+        setCanReset(true);
+      }
+    })();
   }, [searchParams]);
 
   const handleReset = async (e) => {
@@ -33,24 +51,31 @@ export default function ResetPassword() {
     <div className="min-h-screen flex flex-col items-center justify-center">
       <div className="bg-white rounded-xl shadow p-8 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">🔑 Nouveau mot de passe</h2>
-        <form onSubmit={handleReset} className="space-y-3">
-          <input
-            type="password"
-            placeholder="Nouveau mot de passe"
-            className="w-full border rounded px-3 py-2"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            minLength={6}
-          />
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded font-bold"
-          >
-            Mettre à jour
-          </button>
-        </form>
-        {msg && <div className="mt-4 text-center">{msg}</div>}
+        {!canReset && (
+          <div className="mb-4 text-red-600">
+            {msg || "Chargement du lien..."}
+          </div>
+        )}
+        {canReset && (
+          <form onSubmit={handleReset} className="space-y-3">
+            <input
+              type="password"
+              placeholder="Nouveau mot de passe"
+              className="w-full border rounded px-3 py-2"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+            <button
+              type="submit"
+              className="w-full bg-blue-600 text-white py-2 rounded font-bold"
+            >
+              Mettre à jour
+            </button>
+          </form>
+        )}
+        {msg && canReset && <div className="mt-4 text-center">{msg}</div>}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 
@@ -6,17 +6,32 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Récupère le token dans l’URL fournie par Supabase
+  // Gère access_token depuis hash ou query param
   const params = new URLSearchParams(location.hash.replace("#", "?"));
   const accessToken =
     params.get("access_token") ||
     new URLSearchParams(window.location.search).get("access_token");
 
-  // Peut être /reset-password#access_token=XXX OU /reset-password?access_token=XXX
-  // Les deux formats sont gérés ci-dessus
+  // 👉 Force la session si accessToken dans l’URL (pour être certain)
+  useEffect(() => {
+    if (accessToken) {
+      (async () => {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: "", // pas utile ici
+        });
+        // Même si error, on tente de permettre la suite (sinon on bloque le user)
+        setReady(true);
+      })();
+    } else {
+      setReady(true); // On laisse accéder pour afficher msg d’erreur au submit
+    }
+    // eslint-disable-next-line
+  }, [accessToken]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +43,7 @@ export default function ResetPassword() {
       setLoading(false);
       return;
     }
+    // Ici, la session a été fixée avant grâce à useEffect
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       setMsg("Erreur : " + error.message);
@@ -44,25 +60,29 @@ export default function ResetPassword() {
         <h1 className="text-2xl font-bold mb-4 text-blue-700">
           🔒 Réinitialiser mon mot de passe
         </h1>
-        <form onSubmit={handleReset} className="space-y-4">
-          <input
-            type="password"
-            placeholder="Nouveau mot de passe"
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={6}
-            required
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            className="w-full bg-blue-600 dark:bg-blue-700 text-white font-bold py-3 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-800 shadow transition text-lg"
-            disabled={loading}
-          >
-            {loading ? "Changement en cours..." : "Changer le mot de passe"}
-          </button>
-        </form>
+        {ready ? (
+          <form onSubmit={handleReset} className="space-y-4">
+            <input
+              type="password"
+              placeholder="Nouveau mot de passe"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={6}
+              required
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              className="w-full bg-blue-600 dark:bg-blue-700 text-white font-bold py-3 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-800 shadow transition text-lg"
+              disabled={loading}
+            >
+              {loading ? "Changement en cours..." : "Changer le mot de passe"}
+            </button>
+          </form>
+        ) : (
+          <div className="text-gray-500">Chargement…</div>
+        )}
         {msg && (
           <div
             className={`mt-4 font-bold ${
