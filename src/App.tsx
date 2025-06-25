@@ -54,7 +54,6 @@ export default function App() {
           .eq("id", user.id)
           .single();
 
-        // Correction : on retire les espaces et retours à la ligne
         const cleanRole =
           typeof userData?.role === "string" ? userData.role.trim() : null;
 
@@ -94,7 +93,6 @@ export default function App() {
 
   // Redirection automatique seulement depuis /login si déjà connecté
   useEffect(() => {
-    // Pas de redirection automatique si sur /reset-password ou /signup-company
     if (
       location.pathname === "/reset-password" ||
       location.pathname === "/signup-company"
@@ -112,71 +110,91 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <h2 className="text-lg font-semibold text-gray-600">
-          Chargement en cours...
-        </h2>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#e6eef8] via-[#fdf6ee] to-[#f4eee8]">
+        <div className="flex flex-col items-center gap-4">
+          {/* Remplace le src du logo par ton logo ou une icône si tu veux */}
+          <img
+            src="/logo.svg"
+            alt="Logo MyPocket"
+            className="h-16 animate-pulse"
+          />
+          <h2 className="text-2xl font-bold text-[#235ea6] tracking-tight">
+            Chargement de votre espace...
+          </h2>
+          <div className="text-[#174073] opacity-80">
+            Préparez-vous à booster votre productivité 🚀
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <Routes>
-      {/* 🚀 Landing page marketing */}
-      <Route path="/" element={<LandingPage role={role} />} />
+    <div className="min-h-screen bg-gradient-to-br from-[#e6eef8] via-[#fdf6ee] to-[#f4eee8] font-sans transition-all">
+      <Routes>
+        {/* 🚀 Landing page marketing */}
+        <Route path="/" element={<LandingPage role={role} />} />
 
-      {/* Inscription société (publique) */}
-      <Route path="/signup-company" element={<SignupCompany />} />
+        {/* Inscription société (publique) */}
+        <Route path="/signup-company" element={<SignupCompany />} />
 
-      {/* Login : toujours accessible */}
-      <Route
-        path="/login"
-        element={
-          <Login
-            onLogin={(r, id) => {
-              setRole(r.trim() as "admin" | "agent");
-              setUserId(id);
-            }}
-            role={role}
-          />
-        }
-      />
+        {/* Login : toujours accessible */}
+        <Route
+          path="/login"
+          element={
+            <Login
+              onLogin={(r, id) => {
+                setRole(r.trim() as "admin" | "agent");
+                setUserId(id);
+              }}
+              role={role}
+            />
+          }
+        />
 
-      {/* Reset password - accessible sans être connecté */}
-      <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Reset password - accessible sans être connecté */}
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Routes admin protégées */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute role={role} allowedRoles={["admin"]}>
-            <DashboardAdmin userId={userId} />
-          </ProtectedRoute>
-        }
-      />
+        {/* Routes admin protégées */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute role={role} allowedRoles={["admin"]}>
+              <DashboardAdmin userId={userId} />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Routes agent protégées */}
-      <Route
-        path="/agent"
-        element={
-          <ProtectedRoute role={role} allowedRoles={["agent"]}>
-            <AgentHome agentId={userId} />
-          </ProtectedRoute>
-        }
-      />
+        {/* Routes agent protégées */}
+        <Route
+          path="/agent"
+          element={
+            <ProtectedRoute role={role} allowedRoles={["agent"]}>
+              <AgentHome agentId={userId} />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Page non autorisée */}
-      <Route
-        path="/unauthorized"
-        element={
-          <div className="flex h-screen items-center justify-center text-red-600 text-xl font-bold">
-            Accès refusé 😕
-          </div>
-        }
-      />
+        {/* Page non autorisée */}
+        <Route
+          path="/unauthorized"
+          element={
+            <div className="flex h-screen items-center justify-center bg-[#f4eee8]">
+              <div className="text-[#d7263d] text-2xl font-bold bg-white rounded-2xl px-8 py-6 shadow-xl flex flex-col items-center gap-2 border border-[#ffd3c5]">
+                <span>⛔</span>
+                Accès refusé
+                <br />
+                <span className="text-sm font-normal text-[#235ea6] opacity-70">
+                  Vous n'avez pas les droits d’accès à cette page
+                </span>
+              </div>
+            </div>
+          }
+        />
 
-      {/* Catch-all : Redirige vers /login */}
-      <Route path="*" element={<Navigate to="/login" />} />
-    </Routes>
+        {/* Catch-all : Redirige vers /login */}
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    </div>
   );
 }

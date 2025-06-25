@@ -92,117 +92,125 @@ export default function FicheClient({
 
   if (!contact)
     return (
-      <p className="text-center mt-10 text-blue-600 animate-pulse">
-        Chargement...
-      </p>
+      <div className="flex justify-center items-center min-h-screen">
+        <span className="text-xl text-blue-600 animate-pulse">
+          Chargement...
+        </span>
+      </div>
     );
 
-  // Avatar “pixel art” dynamique
   const avatarUrl = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(
     contact.nom || "Contact"
   )}`;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 md:p-8 font-sans">
+    <div className="max-w-4xl mx-auto py-8 px-4 md:px-10 font-sans bg-gradient-to-br from-[#e6eef8] via-[#fdf6ee] to-[#f4eee8] min-h-screen">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-5 bg-white shadow-lg rounded-3xl p-6 mb-8">
         <img
           src={avatarUrl}
-          alt="avatar"
-          className="w-16 h-16 rounded-full bg-white border shadow"
+          alt="Avatar"
+          className="w-20 h-20 rounded-full border-2 border-[#235ea6]"
         />
         <div>
-          <h2 className="text-2xl font-bold text-blue-800 mb-1">
-            {contact.nom}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold shadow">
-              {contact.statut}
-            </span>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-              RDV: {contact.rdv_date || "Non défini"}
-            </span>
-            <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs">
-              {contact.categorie_contact}
-            </span>
-            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-              {contact.type_assurance}
-            </span>
+          <h2 className="text-3xl font-bold text-[#235ea6]">{contact.nom}</h2>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge text={contact.statut} bg="bg-blue-100" textColor="text-blue-800" />
+            <Badge
+              text={`RDV: ${contact.rdv_date || "Non défini"}`}
+              bg="bg-green-100"
+              textColor="text-green-700"
+            />
+            <Badge
+              text={contact.categorie_contact}
+              bg="bg-yellow-100"
+              textColor="text-yellow-700"
+            />
+            <Badge
+              text={contact.type_assurance || "—"}
+              bg="bg-gray-100"
+              textColor="text-gray-600"
+            />
           </div>
         </div>
       </div>
 
       {/* Infos contact */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 text-sm">
-        <div>
-          <span className="font-semibold">Téléphone :</span> {contact.telephone}
-        </div>
-        <div>
-          <span className="font-semibold">Adresse :</span> {contact.adresse}
-        </div>
-        <div>
-          <span className="font-semibold">NPA :</span> {contact.npa}
-        </div>
-        <div>
-          <span className="font-semibold">Agent assigné :</span> {contact.agent_id || "—"}
-        </div>
+      <div className="bg-white rounded-3xl shadow-lg p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <InfoLine label="📞 Téléphone" value={contact.telephone} />
+        <InfoLine label="🏠 Adresse" value={contact.adresse} />
+        <InfoLine label="📮 NPA" value={contact.npa} />
+        <InfoLine
+          label="👤 Agent assigné"
+          value={contact.agent_id || "—"}
+        />
       </div>
 
       {/* Ajouter commentaire */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-6 mb-8">
-        <label className="block font-semibold mb-2 text-blue-900">
-          Ajouter un commentaire :
+      <div className="bg-white rounded-3xl shadow-lg p-6 mb-8">
+        <label className="block font-semibold text-lg mb-3 text-[#235ea6]">
+          📝 Ajouter un commentaire
         </label>
         <textarea
-          className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+          className="w-full border border-[#e6eef8] rounded-xl p-3 focus:ring-2 focus:ring-[#235ea6] transition"
           value={commentaire}
           onChange={(e) => setCommentaire(e.target.value)}
-          rows={3}
+          rows={4}
+          placeholder="Votre commentaire ici..."
         />
         <button
           onClick={handleSubmitComment}
-          className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 rounded-xl transition shadow text-lg flex items-center gap-2"
-          disabled={loading}
+          disabled={loading || !commentaire.trim()}
+          className={`mt-4 w-full sm:w-auto bg-[#235ea6] hover:bg-[#174073] text-white font-bold py-2 px-6 rounded-xl transition shadow-xl ${
+            loading ? "opacity-70 cursor-wait" : ""
+          }`}
         >
-          {loading ? (
-            <>
-              <span className="animate-spin">⏳</span> Envoi...
-            </>
-          ) : (
-            <>
-              <span>✅</span> Valider
-            </>
-          )}
+          {loading ? "⏳ Envoi..." : "✅ Valider"}
         </button>
       </div>
 
-      {/* Historique des commentaires */}
-      <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl shadow p-6">
-        <h3 className="text-lg font-semibold text-blue-700 mb-4">
-          Historique des commentaires
+      {/* Historique */}
+      <div className="bg-white rounded-3xl shadow-lg p-6">
+        <h3 className="text-xl font-bold text-[#235ea6] mb-4">
+          📜 Historique des commentaires
         </h3>
         {historique.length === 0 ? (
-          <p className="text-gray-500">Aucun commentaire pour ce contact.</p>
+          <p className="text-gray-500">Aucun commentaire.</p>
         ) : (
           <ul className="space-y-4">
             {historique.map((appel) => (
-              <li
-                key={appel.id}
-                className="border-b border-dashed last:border-0 pb-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded transition px-2"
-              >
-                <p className="text-xs text-gray-500 mb-1 flex items-center gap-2">
-                  <span className="font-semibold text-blue-700">
-                    {appel.agent_prenom || "Inconnu"} {appel.agent_nom || ""}
+              <li key={appel.id} className="border-b border-dashed last:border-0 pb-3">
+                <div className="text-sm text-gray-500 mb-1">
+                  <span className="font-semibold text-[#235ea6]">
+                    {appel.agent_prenom} {appel.agent_nom}
                   </span>
-                  <span>·</span>
+                  <span className="mx-1">·</span>
                   {new Date(appel.date).toLocaleString("fr-FR")}
-                </p>
+                </div>
                 <p className="text-gray-800">{appel.commentaire}</p>
               </li>
             ))}
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+// Composants réutilisables :
+
+function Badge({ text, bg, textColor }: { text: string; bg: string; textColor: string }) {
+  return (
+    <span className={`px-3 py-1 ${bg} ${textColor} rounded-full text-xs shadow-sm font-bold`}>
+      {text}
+    </span>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-gray-700">
+      <span className="font-semibold">{label} :</span> {value}
     </div>
   );
 }

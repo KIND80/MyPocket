@@ -15,26 +15,24 @@ export default function GestionAgents({ companyId }: { companyId: string }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // DEBUG: Affiche le companyId à chaque render
   useEffect(() => {
-    //console.log("[GestionAgents] companyId reçu:", companyId);
+    fetchAgents();
+    // eslint-disable-next-line
   }, [companyId]);
 
   const fetchAgents = async () => {
-    console.log(
-      "[GestionAgents] fetchAgents déclenché pour companyId:",
-      companyId
-    );
     if (!companyId) {
       setAgents([]);
       setMessage("Aucune société sélectionnée !");
       return;
     }
+
     const { data, error } = await supabase
       .from("users")
       .select("id, email, name, active")
       .eq("company_id", companyId)
       .eq("role", "agent");
+
     if (error) {
       setMessage("❌ Erreur chargement agents");
       setAgents([]);
@@ -42,26 +40,20 @@ export default function GestionAgents({ companyId }: { companyId: string }) {
       setAgents(data || []);
       setMessage("");
     }
-    //console.log("[GestionAgents] Agents récupérés:", data);
   };
-
-  useEffect(() => {
-    fetchAgents();
-    // eslint-disable-next-line
-  }, [companyId]);
 
   const handleAddAgent = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
-    // Vérifie si l'email existe déjà pour cette société
     const { data: exists } = await supabase
       .from("users")
       .select("id")
       .eq("email", email)
       .eq("company_id", companyId)
       .maybeSingle();
+
     if (exists) {
       setMessage("❌ Cet email est déjà un agent de la société !");
       setLoading(false);
@@ -76,8 +68,9 @@ export default function GestionAgents({ companyId }: { companyId: string }) {
       active: true,
     });
 
-    if (error) setMessage("❌ Erreur ajout agent");
-    else {
+    if (error) {
+      setMessage("❌ Erreur ajout agent");
+    } else {
       setMessage(
         "✅ Agent ajouté ! Pour activer le compte, l’agent doit cliquer sur « Mot de passe oublié » sur la page de connexion."
       );
@@ -90,22 +83,25 @@ export default function GestionAgents({ companyId }: { companyId: string }) {
 
   const handleDeleteAgent = async (id: string) => {
     if (!window.confirm("Confirmer suppression de cet agent ?")) return;
+
     const { error } = await supabase.from("users").delete().eq("id", id);
-    if (error) setMessage("Erreur suppression");
-    else {
-      setMessage("Agent supprimé");
+
+    if (error) {
+      setMessage("❌ Erreur suppression");
+    } else {
+      setMessage("✅ Agent supprimé");
       fetchAgents();
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto mt-8 bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-8 animate-fade-in-up">
+    <div className="max-w-3xl mx-auto mt-8 bg-gradient-to-br from-[#fdf6ee] to-[#e6eef8] rounded-3xl shadow-xl p-8 font-sans animate-fade-in-up">
       {/* Header avec icône */}
       <div className="flex items-center gap-3 mb-6">
         <div className="bg-gradient-to-br from-blue-200 to-purple-200 rounded-full p-3 shadow">
           <span className="text-2xl">👥</span>
         </div>
-        <h2 className="text-2xl font-extrabold text-blue-900 dark:text-blue-200">
+        <h2 className="text-3xl font-extrabold text-blue-900">
           Gestion des agents
         </h2>
       </div>
@@ -121,7 +117,7 @@ export default function GestionAgents({ companyId }: { companyId: string }) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email de l'agent"
           required
-          className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-2 flex-1 bg-white dark:bg-gray-800 shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          className="border rounded-xl px-4 py-2 flex-1 shadow-sm focus:ring-2 focus:ring-blue-400 outline-none"
         />
         <input
           type="text"
@@ -129,14 +125,14 @@ export default function GestionAgents({ companyId }: { companyId: string }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Nom de l'agent"
           required
-          className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-2 flex-1 bg-white dark:bg-gray-800 shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          className="border rounded-xl px-4 py-2 flex-1 shadow-sm focus:ring-2 focus:ring-blue-400 outline-none"
         />
         <button
           type="submit"
           disabled={loading}
           className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 rounded-xl shadow transition text-lg"
         >
-          {loading ? <span className="animate-spin">⏳</span> : <>➕ Ajouter</>}
+          {loading ? <span className="animate-spin">⏳</span> : "➕ Ajouter"}
         </button>
       </form>
 
@@ -155,34 +151,25 @@ export default function GestionAgents({ companyId }: { companyId: string }) {
 
       {/* Tableau responsive */}
       <div className="overflow-x-auto">
-        <table className="min-w-full bg-white dark:bg-gray-900 rounded-xl shadow">
-          <thead>
+        <table className="min-w-full bg-white rounded-xl shadow">
+          <thead className="bg-[#235ea6] text-white">
             <tr>
-              <th className="px-4 py-2 text-left text-blue-700 dark:text-blue-200 font-semibold">
-                Email
-              </th>
-              <th className="px-4 py-2 text-left text-blue-700 dark:text-blue-200 font-semibold">
-                Nom
-              </th>
-              <th className="px-4 py-2 text-left text-blue-700 dark:text-blue-200 font-semibold">
-                Statut
-              </th>
+              <th className="px-4 py-2 text-left">Email</th>
+              <th className="px-4 py-2 text-left">Nom</th>
+              <th className="px-4 py-2 text-left">Statut</th>
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
           <tbody>
             {agents.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center py-8 text-gray-400">
+                <td colSpan={4} className="text-center py-6 text-gray-400">
                   Aucun agent pour l’instant.
                 </td>
               </tr>
             ) : (
               agents.map((agent) => (
-                <tr
-                  key={agent.id}
-                  className="hover:bg-blue-50 dark:hover:bg-blue-950 transition"
-                >
+                <tr key={agent.id} className="hover:bg-blue-50 transition">
                   <td className="px-4 py-2 font-mono">{agent.email}</td>
                   <td className="px-4 py-2">{agent.name || "-"}</td>
                   <td className="px-4 py-2">

@@ -110,7 +110,6 @@ export default function AppelContact({ agentId }: { agentId: string }) {
       statut_appel: statut,
       commentaire: commentaireFinal,
     });
-    // 👇 Recharge l'historique tout de suite après
     await fetchHistorique(current.id);
   };
 
@@ -171,15 +170,14 @@ export default function AppelContact({ agentId }: { agentId: string }) {
     setEdition(false);
   };
 
-  // Génère la liste des catégories distinctes (phoning, subside, ...)
   const categoriesDisponibles = Array.from(
     new Set(contacts.map((c) => c.categorie_contact).filter(Boolean))
   );
 
   if (!current) {
     return (
-      <div className="text-center py-10 text-lg text-gray-600 dark:text-gray-300">
-        📭 Aucun contact pour le moment. Revenez plus tard.
+      <div className="text-center py-10 text-lg text-[#235ea6] font-semibold">
+        📭 Aucun contact pour le moment. <br /> Revenez plus tard.
       </div>
     );
   }
@@ -189,75 +187,66 @@ export default function AppelContact({ agentId }: { agentId: string }) {
   )}`;
 
   return (
-    <div className="max-w-2xl mx-auto p-3 sm:p-6">
-      {/* --- Barre de recherche et filtre catégorie --- */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <input
-          type="text"
-          placeholder="🔎 Rechercher (nom, téléphone)"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-72 px-3 py-2 border rounded-xl shadow"
-        />
-        <select
-          value={categorie}
-          onChange={(e) => setCategorie(e.target.value)}
-          className="w-full sm:w-56 px-3 py-2 border rounded-xl shadow"
-        >
-          <option value="">Toutes les catégories</option>
-          {categoriesDisponibles.map((cat) => (
-            <option key={cat} value={cat}>
-              {/* Ici tu peux mettre des labels custom */}
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 flex items-center gap-1">
-            📂 Portefeuille Global
-          </h2>
+    <div className="min-h-[90vh] bg-gradient-to-br from-[#e6eef8] via-[#fdf6ee] to-[#f4eee8] rounded-3xl shadow-2xl py-8 px-2 sm:px-6 max-w-2xl mx-auto font-sans transition">
+      {/* --- Header sticky --- */}
+      <div className="sticky top-0 z-10 bg-opacity-80 bg-[#fdf6ee] rounded-2xl flex flex-col sm:flex-row gap-3 sm:gap-8 justify-between items-center py-3 px-4 shadow mb-8 border border-[#e6eef8]">
+        <div className="flex-1 flex flex-col sm:flex-row gap-2 items-center">
+          <input
+            type="text"
+            placeholder="🔎 Nom ou téléphone"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-60 px-4 py-2 rounded-2xl border border-[#e6eef8] focus:border-[#235ea6] shadow transition"
+          />
+          <select
+            value={categorie}
+            onChange={(e) => setCategorie(e.target.value)}
+            className="w-48 px-4 py-2 rounded-2xl border border-[#e6eef8] focus:border-[#235ea6] shadow transition"
+          >
+            <option value="">Toutes les catégories</option>
+            {categoriesDisponibles.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </option>
+            ))}
+          </select>
         </div>
         <button
           onClick={handleLogout}
-          className="bg-gray-700 hover:bg-gray-900 text-white px-4 py-2 rounded-xl shadow transition font-bold flex items-center gap-1"
+          className="bg-[#fcbf49] hover:bg-[#ffd166] text-[#235ea6] px-6 py-2 rounded-full shadow font-bold text-base transition-all"
         >
           🔓 Déconnexion
         </button>
       </div>
 
-      {/* Fiche contact */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl px-4 py-5 sm:px-8 mb-4 animate-fade-in-up">
-        {/* Infos principales */}
+      {/* --- Fiche contact --- */}
+      <div className="bg-white/95 rounded-3xl shadow-2xl px-4 py-6 mb-6 border border-[#e6eef8] animate-fade-in-up">
         <div className="flex flex-col sm:flex-row gap-5 items-center mb-4">
           <img
             src={avatarUrl}
             alt="avatar"
-            className="w-16 h-16 rounded-full border-2 border-blue-400 bg-white"
+            className="w-16 h-16 rounded-full border-2 border-[#235ea6] bg-white"
           />
           <div className="flex-1 w-full">
             {edition ? (
               <input
                 value={form.nom || ""}
                 onChange={(e) => setForm({ ...form, nom: e.target.value })}
-                className="border rounded-xl px-3 py-2 w-full mb-2 text-lg"
+                className="border border-[#e6eef8] focus:border-[#235ea6] rounded-2xl px-4 py-2 w-full mb-2 text-lg"
               />
             ) : (
-              <h3 className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-100">
+              <h3 className="text-xl sm:text-2xl font-extrabold text-[#235ea6]">
                 {current.nom}
               </h3>
             )}
-            <p className="text-sm text-gray-500 mb-1">{current.telephone}</p>
+            <p className="text-sm text-gray-600 mb-1">{current.telephone}</p>
             <p className="text-xs text-gray-400 mb-1">
               {current.categorie_contact}
             </p>
           </div>
           <button
             onClick={() => setEdition(!edition)}
-            className="text-sm text-gray-500 hover:text-blue-700 px-3 py-2 rounded transition"
+            className="text-sm text-[#235ea6] hover:text-[#fcbf49] font-bold px-3 py-2 rounded transition"
           >
             ✏️ {edition ? "Annuler" : "Modifier"}
           </button>
@@ -275,13 +264,13 @@ export default function AppelContact({ agentId }: { agentId: string }) {
                   onChange={(e) =>
                     setForm({ ...form, [field]: e.target.value })
                   }
-                  className="w-full px-3 py-2 border rounded-xl"
+                  className="w-full px-3 py-2 border border-[#e6eef8] focus:border-[#235ea6] rounded-2xl transition"
                 />
               )
             )}
             <button
               onClick={handleUpdateContact}
-              className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 font-bold col-span-2"
+              className="bg-[#235ea6] text-white px-4 py-2 rounded-2xl hover:bg-[#174073] font-bold col-span-2 mt-2 shadow transition"
             >
               ✅ Sauvegarder
             </button>
@@ -311,20 +300,20 @@ export default function AppelContact({ agentId }: { agentId: string }) {
         )}
 
         {/* Etapes d'appel */}
-        <div className="my-4">
+        <div className="my-6">
           {etatAppel === "init" && (
             <div className="flex flex-wrap gap-3">
               <a href={`tel:${current.telephone}`}>
                 <button
                   onClick={() => setEtatAppel("en_cours")}
-                  className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-blue-700 shadow transition flex items-center gap-2"
+                  className="bg-[#235ea6] text-white px-6 py-2 rounded-full font-bold hover:bg-[#174073] shadow transition flex items-center gap-2"
                 >
                   📞 Appeler
                 </button>
               </a>
               <button
                 onClick={handlePasser}
-                className="bg-gray-200 text-gray-800 px-5 py-2 rounded-xl font-bold hover:bg-gray-400 shadow transition"
+                className="bg-[#e6eef8] text-[#235ea6] px-6 py-2 rounded-full font-bold hover:bg-[#c7d8f7] shadow transition"
               >
                 ⏭️ Passer
               </button>
@@ -335,13 +324,13 @@ export default function AppelContact({ agentId }: { agentId: string }) {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={handleInjoignable}
-                className="bg-red-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-red-700 shadow transition"
+                className="bg-[#fcbf49] text-[#235ea6] px-6 py-2 rounded-full font-bold hover:bg-[#ffd166] shadow transition"
               >
                 ❌ Injoignable
               </button>
               <button
                 onClick={() => setEtatAppel("oui")}
-                className="bg-green-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-700 shadow transition"
+                className="bg-[#174073] text-white px-6 py-2 rounded-full font-bold hover:bg-[#235ea6] shadow transition"
               >
                 ✅ Oui
               </button>
@@ -354,20 +343,20 @@ export default function AppelContact({ agentId }: { agentId: string }) {
                 value={commentaire}
                 onChange={(e) => setCommentaire(e.target.value)}
                 placeholder="📝 Ajouter un commentaire"
-                className="w-full px-4 py-2 border rounded-xl mb-2"
+                className="w-full px-4 py-2 border border-[#e6eef8] focus:border-[#235ea6] rounded-2xl mb-3 transition"
               />
               <div className="flex flex-wrap gap-3">
                 <button
                   onClick={handleRdv}
                   disabled={!commentaire.trim()}
-                  className="bg-blue-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-blue-600 shadow transition disabled:opacity-50 flex items-center gap-1"
+                  className="bg-[#235ea6] text-white px-6 py-2 rounded-full font-bold hover:bg-[#174073] shadow transition disabled:opacity-50 flex items-center gap-1"
                 >
                   📅 RDV
                 </button>
                 <button
                   onClick={handleValiderCommentaire}
                   disabled={!commentaire.trim()}
-                  className="bg-gray-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-gray-600 shadow transition disabled:opacity-50 flex items-center gap-1"
+                  className="bg-[#e6eef8] text-[#235ea6] px-6 py-2 rounded-full font-bold hover:bg-[#c7d8f7] shadow transition disabled:opacity-50 flex items-center gap-1"
                 >
                   📝 Valider
                 </button>
@@ -378,18 +367,18 @@ export default function AppelContact({ agentId }: { agentId: string }) {
 
         {/* Historique */}
         {historique.length > 0 && (
-          <div className="mt-4 bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
-            <h4 className="font-bold mb-2 text-blue-800 dark:text-blue-200">
+          <div className="mt-4 bg-[#fdf6ee] rounded-2xl p-4 border border-[#e6eef8]">
+            <h4 className="font-extrabold mb-2 text-[#235ea6]">
               📞 Derniers appels
             </h4>
             <ul className="text-sm space-y-2">
               {historique.map((appel) => (
                 <li key={appel.id} className="flex flex-col">
-                  <span className="font-semibold text-gray-800 dark:text-gray-100">
+                  <span className="font-semibold text-[#174073]">
                     {new Date(appel.date).toLocaleDateString("fr-FR")} —{" "}
                     {appel.statut_appel}
                   </span>
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-[#235ea6] opacity-90">
                     📝 {appel.commentaire}
                   </span>
                 </li>

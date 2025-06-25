@@ -77,14 +77,9 @@ export default function AjouterContact({
       visible_globally: !isAssigned,
     };
 
-    // LOG DEBUG 👇
-    //console.log("Payload contact", payload);
-
     const { error } = await supabase.from("contacts").insert([payload]);
 
     if (error) {
-      // LOG ERREUR DETAILLEE 👇
-      //console.log("ERREUR SUPABASE:", error);
       setMsg(
         "❌ Erreur lors de la création du contact : " +
           (error.message || "Erreur inconnue")
@@ -109,12 +104,14 @@ export default function AjouterContact({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-2">
-      <div className="max-w-lg w-full rounded-2xl shadow-xl bg-white p-6">
-        <h2 className="text-2xl font-bold mb-4">➕ Ajouter un contact</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#e6eef8] via-[#fdf6ee] to-[#f4eee8] py-8 font-sans transition">
+      <div className="w-full max-w-lg bg-white/90 rounded-3xl shadow-2xl px-8 py-7 border border-[#e6eef8]">
+        <h2 className="text-3xl font-extrabold mb-4 text-[#235ea6] flex items-center gap-2">
+          ➕ Ajouter un contact
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Champs standards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               type="text"
               name="nom"
@@ -122,7 +119,7 @@ export default function AjouterContact({
               value={form.nom}
               onChange={handleChange}
               placeholder="Nom"
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-[#e6eef8] focus:border-[#235ea6] bg-[#f8fafc] rounded-xl px-4 py-2 w-full transition"
             />
             <input
               type="tel"
@@ -131,7 +128,7 @@ export default function AjouterContact({
               value={form.telephone}
               onChange={handleChange}
               placeholder="Téléphone"
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-[#e6eef8] focus:border-[#235ea6] bg-[#f8fafc] rounded-xl px-4 py-2 w-full transition"
             />
             <input
               type="email"
@@ -140,7 +137,7 @@ export default function AjouterContact({
               value={form.email}
               onChange={handleChange}
               placeholder="Email"
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-[#e6eef8] focus:border-[#235ea6] bg-[#f8fafc] rounded-xl px-4 py-2 w-full transition"
             />
             <input
               type="text"
@@ -148,7 +145,7 @@ export default function AjouterContact({
               value={form.adresse}
               onChange={handleChange}
               placeholder="Adresse"
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-[#e6eef8] focus:border-[#235ea6] bg-[#f8fafc] rounded-xl px-4 py-2 w-full transition"
             />
             <input
               type="text"
@@ -156,7 +153,7 @@ export default function AjouterContact({
               value={form.type_assurance}
               onChange={handleChange}
               placeholder="Type d'assurance"
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-[#e6eef8] focus:border-[#235ea6] bg-[#f8fafc] rounded-xl px-4 py-2 w-full transition"
             />
             <input
               type="text"
@@ -164,7 +161,7 @@ export default function AjouterContact({
               value={form.categorie_contact}
               onChange={handleChange}
               placeholder="Catégorie contact"
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-[#e6eef8] focus:border-[#235ea6] bg-[#f8fafc] rounded-xl px-4 py-2 w-full transition"
             />
             <input
               type="text"
@@ -172,20 +169,20 @@ export default function AjouterContact({
               value={form.canton}
               onChange={handleChange}
               placeholder="Canton"
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-[#e6eef8] focus:border-[#235ea6] bg-[#f8fafc] rounded-xl px-4 py-2 w-full transition"
             />
           </div>
 
           {/* Assignation à un agent */}
-          <div className="mt-2">
-            <label className="font-bold text-sm mb-1 block">
+          <div>
+            <label className="font-bold text-sm mb-1 block text-[#235ea6]">
               Assigner à un agent (optionnel) :
             </label>
             <select
               name="agent_id"
               value={form.agent_id}
               onChange={handleChange}
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-[#e6eef8] focus:border-[#235ea6] bg-[#f8fafc] rounded-xl px-4 py-2 w-full transition"
             >
               <option value="">— Laisser non assigné —</option>
               {agents.map((agent) => (
@@ -198,10 +195,10 @@ export default function AjouterContact({
 
           {msg && (
             <div
-              className={`text-center font-bold ${
+              className={`text-center font-bold rounded-xl py-2 px-3 mt-1 shadow ${
                 msg.startsWith("✅")
-                  ? "text-green-600 animate-fade-in"
-                  : "text-red-600 animate-shake"
+                  ? "text-green-700 bg-green-50 animate-fade-in"
+                  : "text-red-700 bg-red-50 animate-shake"
               }`}
             >
               {msg}
@@ -210,10 +207,14 @@ export default function AjouterContact({
 
           <button
             type="submit"
-            className="w-full mt-2 bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700 transition"
+            className="w-full mt-2 bg-[#235ea6] hover:bg-[#174073] text-white font-bold py-3 rounded-2xl shadow-xl text-lg transition-all tracking-wide"
             disabled={loading}
           >
-            {loading ? "Ajout en cours..." : "Ajouter le contact"}
+            {loading ? (
+              <span className="animate-pulse">Ajout en cours...</span>
+            ) : (
+              <>Ajouter le contact</>
+            )}
           </button>
         </form>
       </div>

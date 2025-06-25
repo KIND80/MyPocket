@@ -6,6 +6,7 @@
     "@supabase/supabase-js": "^2.49.9",
     "ajv": "^6.12.6",
     "ajv-keywords": "^3.5.2",
+    "framer-motion": "^12.19.1",
     "node-fetch": "^2.7.0",
     "papaparse": "^5.5.3",
     "react": "^19.1.0",
