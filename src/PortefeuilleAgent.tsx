@@ -1,4 +1,3 @@
-// ... (imports et types inchangés)
 import React, { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 
@@ -22,9 +21,101 @@ type Appel = {
   date: string;
   statut_appel: string;
   commentaire: string;
+  agent: { prenom?: string; nom?: string } | null;
 };
 
+// ---- Composant MES NOTES ----
+function MesNotes({ agentId }: { agentId: string }) {
+  const [notes, setNotes] = useState<
+    { id: string; note: string; created_at: string }[]
+  >([]);
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
 
+  const fetchNotes = async () => {
+    const { data } = await supabase
+      .from("user_notes")
+      .select("*")
+      .eq("agent_id", agentId)
+      .order("created_at", { ascending: false });
+    setNotes(data || []);
+  };
+
+  useEffect(() => {
+    fetchNotes();
+  }, [agentId]);
+
+  const handleAddNote = async () => {
+    if (!note.trim()) return;
+    setLoading(true);
+    await supabase.from("user_notes").insert({
+      agent_id: agentId,
+      note: note.trim(),
+    });
+    setNote("");
+    setMsg("Note ajoutée !");
+    await fetchNotes();
+    setLoading(false);
+    setTimeout(() => setMsg(""), 2000);
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    setLoading(true);
+    await supabase.from("user_notes").delete().eq("id", id);
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    setMsg("Note supprimée !");
+    setLoading(false);
+    setTimeout(() => setMsg(""), 2000);
+  };
+
+  return (
+    <div className="bg-gray-50 border rounded-lg p-4 mb-8 shadow">
+      <h2 className="font-bold mb-2">🗒️ Mes notes personnelles</h2>
+      <div className="flex gap-2 mb-2">
+        <textarea
+          className="flex-1 border rounded px-2 py-1"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Ajouter une note ou un rappel perso…"
+          rows={2}
+          disabled={loading}
+        />
+        <button
+          onClick={handleAddNote}
+          className="bg-blue-500 text-white px-3 py-2 rounded font-bold"
+          disabled={loading || !note.trim()}
+        >
+          Ajouter
+        </button>
+      </div>
+      {msg && <div className="text-green-600 mb-2 text-sm">{msg}</div>}
+      {notes.length === 0 ? (
+        <p className="text-gray-400 text-sm">Aucune note pour le moment.</p>
+      ) : (
+        <ul className="space-y-2">
+          {notes.map((n) => (
+            <li
+              key={n.id}
+              className="flex justify-between items-center bg-white border rounded px-3 py-1"
+            >
+              <span className="text-gray-700">{n.note}</span>
+              <button
+                onClick={() => handleDeleteNote(n.id)}
+                className="text-red-400 hover:text-red-700 text-xs ml-2"
+                disabled={loading}
+              >
+                Supprimer
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---- COMPOSANT PRINCIPAL ----
 export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [callHistory, setCallHistory] = useState<Appel[]>([]);
@@ -33,46 +124,53 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   const [editValues, setEditValues] = useState<
     Record<string, Partial<Contact>>
   >({});
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: contactData } = await supabase
-        .from("contacts")
-        .select("*")
-        .eq("agent_id", agentId);
-
-      const { data: appelsData } = await supabase
-        .from("call_history")
-        .select("*")
-        .order("date", { ascending: false });
-
-      setContacts(contactData || []);
-      setCallHistory(appelsData || []);
-    };
-
     fetchData();
+    const interval = setInterval(fetchData, 4000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line
   }, [agentId]);
 
-  const isRdvAVenir = (rdv_date: string) => {
-    if (!rdv_date) return false;
-    return new Date(rdv_date) > new Date();
+  // ---- MISE A JOUR callHistory après chaque modif ----
+  const fetchData = async () => {
+    setLoading(true);
+    const { data: contactData } = await supabase
+      .from("contacts")
+      .select("*")
+      .eq("agent_id", agentId);
+
+    const { data: appelsData } = await supabase
+      .from("call_history")
+      .select("*, users:agent_id (prenom, nom)")
+      .order("date", { ascending: false });
+
+    const formattedAppels =
+      appelsData?.map((a: any) => ({
+        id: a.id,
+        contact_id: a.contact_id,
+        date: a.date,
+        statut_appel: a.statut_appel,
+        commentaire: a.commentaire,
+        agent: a.users ? { prenom: a.users.prenom, nom: a.users.nom } : null,
+      })) || [];
+
+    setContacts(contactData || []);
+    setCallHistory(formattedAppels);
+    setLoading(false);
   };
 
-  const getHistoriqueAvecCommentaire = (contactId: string) =>
-    callHistory.filter(
-      (h) =>
-        h.contact_id === contactId &&
-        h.commentaire &&
-        h.commentaire.trim() !== ""
+  const contactsAvecRDV = contacts.filter((c) => {
+    const hasCommentaire = callHistory.some(
+      (h) => h.contact_id === c.id && h.commentaire?.trim()
     );
-
-  const contactsAvecRDV = contacts.filter(
-    (c) =>
-      isRdvAVenir(c.rdv_date) && getHistoriqueAvecCommentaire(c.id).length > 0
-  );
+    return c.statut === "rdv" && hasCommentaire;
+  });
 
   const contactsRestants = contacts.filter(
-    (c) => !contactsAvecRDV.some((important) => important.id === c.id)
+    (c) => !contactsAvecRDV.some((rdv) => rdv.id === c.id)
   );
 
   const validerSignature = async (
@@ -81,9 +179,11 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
   ) => {
     const commentaireTexte = commentaire[contactId]?.trim();
     if (!commentaireTexte) {
-      alert("Merci de saisir un commentaire avant de valider.");
+      setMsg("Merci de saisir un commentaire avant de valider.");
+      setTimeout(() => setMsg(""), 2000);
       return;
     }
+    setLoading(true);
 
     await supabase
       .from("contacts")
@@ -93,76 +193,99 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
     await supabase.from("call_history").insert({
       contact_id: contactId,
       agent_id: agentId,
-      statut_appel: "Répondu",
-      commentaire: commentaireTexte || type,
+      statut_appel: type === "Signature" ? "signature" : "non_signature",
+      commentaire: commentaireTexte,
+      admin_validation: null, // Pour workflow admin !
     });
 
-    alert(`${type} soumise à validation.`);
     setCommentaire((prev) => ({ ...prev, [contactId]: "" }));
+    setMsg("Envoyé pour validation !");
+    await fetchData(); // <-- recharge à jour
+    setLoading(false);
+    setTimeout(() => setMsg(""), 2000);
+  };
+
+  const ajouterCommentaire = async (contactId: string) => {
+    const texte = commentaire[contactId]?.trim();
+    if (!texte) {
+      setMsg("Merci de saisir un commentaire.");
+      setTimeout(() => setMsg(""), 2000);
+      return;
+    }
+    setLoading(true);
+    await supabase.from("call_history").insert({
+      contact_id: contactId,
+      agent_id: agentId,
+      statut_appel: "Note",
+      commentaire: texte,
+    });
+    setCommentaire((prev) => ({ ...prev, [contactId]: "" }));
+    setMsg("Commentaire ajouté !");
+    await fetchData(); // <-- recharge à jour
+    setLoading(false);
+    setTimeout(() => setMsg(""), 2000);
   };
 
   const handleSave = async (id: string) => {
     const updates = editValues[id];
     if (!updates) return;
-
+    setLoading(true);
     const { error } = await supabase
       .from("contacts")
       .update(updates)
       .eq("id", id);
 
     if (error) {
-      alert("Erreur lors de la mise à jour");
+      setMsg("Erreur lors de la mise à jour");
+      setTimeout(() => setMsg(""), 2000);
     } else {
       setEditMode((prev) => ({ ...prev, [id]: false }));
       setEditValues((prev) => ({ ...prev, [id]: {} }));
-      const { data: updatedContacts } = await supabase
-        .from("contacts")
-        .select("*")
-        .eq("agent_id", agentId);
-      setContacts(updatedContacts || []);
+      setMsg("Contact mis à jour !");
+      await fetchData();
+      setTimeout(() => setMsg(""), 2000);
     }
+    setLoading(false);
   };
 
   const renderContactCard = (c: Contact) => {
     const historique = callHistory
       .filter((h) => h.contact_id === c.id)
-      .slice(0, 3);
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     const editing = editMode[c.id];
     const values = editValues[c.id] || {};
 
     return (
-      <div
-        key={c.id}
-        style={{
-          border: "1px solid #ccc",
-          borderRadius: 8,
-          padding: 15,
-          marginBottom: 20,
-          backgroundColor: "#fff",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-        }}
-      >
-        <h2>
-          {editing ? (
-            <input
-              value={values.nom ?? c.nom}
-              onChange={(e) =>
-                setEditValues((prev) => ({
-                  ...prev,
-                  [c.id]: { ...prev[c.id], nom: e.target.value },
-                }))
-              }
-            />
-          ) : (
-            c.nom
+      <div key={c.id} className="border rounded-lg p-4 shadow-md bg-white mb-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">
+            {editing ? (
+              <input
+                className="border rounded px-2 py-1"
+                value={values.nom ?? c.nom}
+                onChange={(e) =>
+                  setEditValues((prev) => ({
+                    ...prev,
+                    [c.id]: { ...prev[c.id], nom: e.target.value },
+                  }))
+                }
+              />
+            ) : (
+              c.nom
+            )}
+          </h2>
+          {c.statut === "assigné" && (
+            <span className="inline-flex items-center px-3 py-1 bg-green-500 text-white rounded-full text-xs font-bold animate-pulse ml-2">
+              ✅ Validé
+            </span>
           )}
-        </h2>
-
-        {/* infos + modif + bouton save ou edit */}
+        </div>
         <p>
           <strong>📞 Téléphone :</strong>{" "}
           {editing ? (
             <input
+              className="border rounded px-2 py-1"
               value={values.telephone ?? c.telephone}
               onChange={(e) =>
                 setEditValues((prev) => ({
@@ -179,6 +302,7 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           <strong>📋 Catégorie :</strong>{" "}
           {editing ? (
             <input
+              className="border rounded px-2 py-1"
               value={values.categorie_contact ?? c.categorie_contact}
               onChange={(e) =>
                 setEditValues((prev) => ({
@@ -195,6 +319,7 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           <strong>🛡️ Assurance :</strong>{" "}
           {editing ? (
             <input
+              className="border rounded px-2 py-1"
               value={values.type_assurance ?? c.type_assurance}
               onChange={(e) =>
                 setEditValues((prev) => ({
@@ -211,6 +336,7 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           <strong>🏠 Adresse :</strong>{" "}
           {editing ? (
             <input
+              className="border rounded px-2 py-1"
               value={values.adresse ?? c.adresse}
               onChange={(e) =>
                 setEditValues((prev) => ({
@@ -224,14 +350,22 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           )}
         </p>
 
-        <div style={{ marginTop: 10 }}>
+        <div className="mt-2">
           {editing ? (
             <>
-              <button onClick={() => handleSave(c.id)}>💾 Enregistrer</button>
+              <button
+                onClick={() => handleSave(c.id)}
+                className="mr-2 bg-blue-500 text-white px-3 py-1 rounded"
+                disabled={loading}
+              >
+                💾 Enregistrer
+              </button>
               <button
                 onClick={() =>
                   setEditMode((prev) => ({ ...prev, [c.id]: false }))
                 }
+                className="bg-gray-300 px-3 py-1 rounded"
+                disabled={loading}
               >
                 ❌ Annuler
               </button>
@@ -239,98 +373,116 @@ export default function PortefeuilleAgent({ agentId }: { agentId: string }) {
           ) : (
             <button
               onClick={() => setEditMode((prev) => ({ ...prev, [c.id]: true }))}
+              className="bg-yellow-400 text-black px-3 py-1 rounded"
+              disabled={loading}
             >
               ✏️ Modifier
             </button>
           )}
         </div>
 
-        <textarea
-          placeholder="Ajouter un commentaire ici..."
-          value={commentaire[c.id] || ""}
-          onChange={(e) =>
-            setCommentaire((prev) => ({
-              ...prev,
-              [c.id]: e.target.value,
-            }))
-          }
-          style={{
-            width: "100%",
-            marginTop: 10,
-            padding: 8,
-            borderRadius: 4,
-            border: "1px solid #ccc",
-          }}
-        />
+        <div className="flex gap-2 mt-2">
+          <textarea
+            placeholder="Ajouter un commentaire ici..."
+            value={commentaire[c.id] || ""}
+            onChange={(e) =>
+              setCommentaire((prev) => ({ ...prev, [c.id]: e.target.value }))
+            }
+            className="w-full border rounded px-2 py-1"
+            rows={2}
+            disabled={loading}
+          />
+          <button
+            onClick={() => ajouterCommentaire(c.id)}
+            className="bg-blue-500 text-white px-4 py-2 rounded font-bold"
+            disabled={loading || !commentaire[c.id]?.trim()}
+          >
+            Envoyer
+          </button>
+        </div>
 
         {c.statut === "rdv" && (
-          <div style={{ marginTop: 15 }}>
-            <p>
-              <strong>🕓 RDV à valider :</strong>
-            </p>
+          <div className="mt-3">
             <button
               onClick={() => validerSignature(c.id, "Signature")}
-              style={{
-                marginRight: 10,
-                backgroundColor: "#4CAF50",
-                color: "#fff",
-                padding: "6px 10px",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-              }}
+              disabled={loading || !commentaire[c.id]?.trim()}
+              className="bg-green-500 text-white px-4 py-2 rounded mr-2 disabled:opacity-50"
             >
               ✅ Signature
             </button>
             <button
               onClick={() => validerSignature(c.id, "Non Signature")}
-              style={{
-                backgroundColor: "#f44336",
-                color: "#fff",
-                padding: "6px 10px",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-              }}
+              disabled={loading || !commentaire[c.id]?.trim()}
+              className="bg-red-500 text-white px-4 py-2 rounded disabled:opacity-50"
             >
               ❌ Non Signature
             </button>
           </div>
         )}
 
-        {historique.length > 0 && (
-          <div
-            style={{
-              marginTop: 15,
-              backgroundColor: "#f7f7f7",
-              padding: 10,
-              borderRadius: 6,
-            }}
-          >
-            <strong>🕓 3 derniers appels :</strong>
-            <ul style={{ marginTop: 6 }}>
+        <div
+          className="mt-4 bg-gray-100 p-3 rounded"
+          style={{ maxHeight: 200, overflowY: "auto" }}
+        >
+          <strong>🕓 Historique des commentaires :</strong>
+          {historique.length === 0 ? (
+            <div className="text-gray-400 italic text-sm">
+              Aucun commentaire.
+            </div>
+          ) : (
+            <ul className="mt-2 list-disc list-inside text-sm text-gray-700">
               {historique.map((h) => (
                 <li key={h.id}>
-                  {new Date(h.date).toLocaleString()} — {h.statut_appel}
-                  {h.commentaire && ` — ${h.commentaire}`}
+                  <span className="font-bold">
+                    {h.agent
+                      ? `${h.agent.prenom || ""} ${h.agent.nom || ""}`.trim()
+                      : "Agent inconnu"}
+                  </span>{" "}
+                  <span className="text-gray-500">
+                    {new Date(h.date).toLocaleString()}
+                  </span>
+                  {" — "}
+                  <span className="italic">{h.statut_appel}</span>
+                  {h.commentaire && ` : ${h.commentaire}`}
                 </li>
               ))}
             </ul>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="container">
-      <h1 className="text-center">📁 Mon portefeuille</h1>
+    <div className="container mx-auto px-4 py-6">
+      <MesNotes agentId={agentId} />
 
-      <h3>📌 Contacts à suivre (commentaire + RDV à venir)</h3>
-      {contactsAvecRDV.map(renderContactCard)}
+      <h1 className="text-2xl font-bold mb-6 text-center">
+        📁 Mon portefeuille
+      </h1>
 
-      <h3>📋 Autres contacts</h3>
-      {contactsRestants.map(renderContactCard)}
+      {msg && <div className="mb-4 text-center text-green-600">{msg}</div>}
+      {loading && (
+        <div className="mb-6 text-center text-blue-500 font-semibold">
+          Chargement...
+        </div>
+      )}
+
+      <h2 className="text-lg font-semibold mb-2">
+        📌 Contacts à suivre (RDV + commentaire)
+      </h2>
+      {contactsAvecRDV.length === 0 ? (
+        <p className="text-gray-500">Aucun contact à suivre.</p>
+      ) : (
+        contactsAvecRDV.map(renderContactCard)
+      )}
+
+      <h2 className="text-lg font-semibold mt-6 mb-2">📋 Autres contacts</h2>
+      {contactsRestants.length === 0 ? (
+        <p className="text-gray-500">Aucun autre contact assigné.</p>
+      ) : (
+        contactsRestants.map(renderContactCard)
+      )}
     </div>
   );
 }
