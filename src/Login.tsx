@@ -5,7 +5,7 @@ import { useNavigate, Navigate } from "react-router-dom";
 // Mascotte (image wow)
 function Mascotte() {
   return (
-    <div className="bg-gradient-to-br from-indigo-300 to-blue-200 rounded-full p-2 w-16 h-16 flex items-center justify-center shadow-lg animate-fade-in">
+    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 via-white to-fuchsia-100 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center shadow-xl border-4 border-white -mt-12 mb-3">
       <img
         src="https://api.dicebear.com/7.x/pixel-art/svg?seed=John"
         alt="Mascotte"
@@ -111,13 +111,24 @@ export default function Login({
   };
 
   // ----------- Cœur de la correction : redirection safe ----------- //
-  let content = (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition">
-      <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-3xl shadow-2xl px-8 py-10 text-center relative animate-fade-in-up">
+  if (role === "admin") return <Navigate to="/admin" replace />;
+  if (role === "agent") return <Navigate to="/agent" replace />;
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-fuchsia-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900">
+      {/* Bandeau haut (header arrondi) */}
+      <div className="w-full bg-blue-800 dark:bg-gray-900 rounded-b-3xl py-7 flex items-center justify-center shadow-lg mb-[-60px] z-10">
+        <h1 className="text-2xl md:text-3xl text-white font-extrabold flex items-center gap-2 drop-shadow">
+          🚀 MyPocket CRM
+        </h1>
+      </div>
+
+      {/* Card principale */}
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-8 pt-12 flex flex-col items-center mt-[-50px] border border-blue-100 dark:border-gray-800 relative animate-fade-in-up">
         {/* Retour home */}
         <button
           onClick={() => navigate("/")}
-          className="absolute top-3 left-3 text-gray-400 hover:text-blue-500 text-xs underline transition"
+          className="absolute top-3 left-3 text-blue-400 dark:text-blue-300 hover:text-blue-600 dark:hover:text-white text-xs underline transition"
           style={{ zIndex: 10 }}
           tabIndex={-1}
         >
@@ -125,25 +136,26 @@ export default function Login({
         </button>
 
         <Mascotte />
-
-        <h1 className="text-3xl font-extrabold mb-2 text-blue-900 dark:text-blue-200 flex items-center justify-center gap-2 animate-fade-in">
+        <h1 className="text-2xl font-extrabold mb-1 text-blue-900 dark:text-blue-200 flex items-center justify-center gap-2 animate-fade-in">
           Bienvenue sur{" "}
-          <span className="text-blue-600 dark:text-blue-300">MyPocket</span>
-          <span className="text-xl">✨</span>
+          <span className="text-blue-700 dark:text-blue-400">MyPocket</span>
         </h1>
-        <p className="text-gray-600 dark:text-gray-300 mb-5 animate-fade-in-slow">
+        <p className="text-gray-600 dark:text-gray-300 mb-5 text-center text-base">
           L’outil <span className="font-semibold">intelligent</span> pour gérer
           tes contacts et booster ton phoning.
         </p>
-        <h2 className="text-lg font-semibold mb-6 text-blue-800 dark:text-blue-200 animate-fade-in-slow">
-          🔐 Connexion à ton espace
+        <h2 className="text-base font-semibold mb-4 flex items-center gap-2 text-blue-800 dark:text-blue-400">
+          <span role="img" aria-label="lock">
+            🔒
+          </span>
+          Connexion à ton espace
         </h2>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="w-full space-y-4">
           <input
             type="email"
             placeholder="Email"
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -152,7 +164,7 @@ export default function Login({
           <input
             type="password"
             placeholder="Mot de passe"
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -160,17 +172,16 @@ export default function Login({
           />
           <button
             type="submit"
-            className="w-full bg-blue-600 dark:bg-blue-700 text-white font-bold py-3 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-800 shadow transition text-lg"
+            className="w-full bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800 text-white font-bold py-3 rounded-2xl shadow-lg transition text-lg"
             disabled={loading}
           >
             {loading ? "Connexion en cours..." : "Se connecter"}
           </button>
         </form>
 
-        {/* Nouvelle modale reset */}
         <button
           onClick={() => setShowReset(true)}
-          className="mt-3 w-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-2 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+          className="mt-3 w-full bg-yellow-400 hover:bg-yellow-500 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-gray-900 dark:text-gray-900 font-semibold py-2 rounded-2xl shadow-md transition"
           disabled={loading}
           type="button"
         >
@@ -178,16 +189,18 @@ export default function Login({
         </button>
 
         {errorMsg && (
-          <p className="text-red-600 mt-3 animate-shake">{errorMsg}</p>
+          <p className="text-red-600 dark:text-red-400 mt-3 text-sm font-bold">
+            {errorMsg}
+          </p>
         )}
 
-        <div className="mt-8 text-center">
-          <span className="text-gray-600 dark:text-gray-300">
+        <div className="mt-7 text-center w-full">
+          <span className="text-gray-500 dark:text-gray-300">
             Pas encore de compte société ?
           </span>
           <button
             onClick={() => navigate("/signup-company")}
-            className="block mt-2 text-blue-600 dark:text-blue-300 underline font-semibold mx-auto"
+            className="block mt-2 w-full bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white font-bold py-2 rounded-2xl shadow transition"
             type="button"
           >
             ➕ Créer une société et un compte admin
@@ -196,7 +209,8 @@ export default function Login({
 
         <button
           onClick={toggleDarkMode}
-          className="mt-8 w-full bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800 font-bold py-2 rounded-xl hover:bg-gray-900 dark:hover:bg-gray-300 shadow transition"
+          className="mt-6 w-full bg-gray-900 dark:bg-gray-200 text-white dark:text-gray-900 font-bold py-2 rounded-2xl hover:bg-black dark:hover:bg-white shadow transition"
+          type="button"
         >
           🌗 Activer/Désactiver le mode sombre
         </button>
@@ -218,12 +232,12 @@ export default function Login({
             >
               ×
             </button>
-            <h2 className="text-lg font-bold mb-3">
+            <h2 className="text-lg font-bold mb-3 dark:text-white">
               🔑 Réinitialisation du mot de passe
             </h2>
             <input
               type="email"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl mb-3 bg-white dark:bg-gray-800"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl mb-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="Votre email"
               value={resetEmail}
               onChange={(e) => setResetEmail(e.target.value)}
@@ -235,7 +249,7 @@ export default function Login({
             />
             <button
               onClick={handlePasswordReset}
-              className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700 transition mb-2"
+              className="w-full bg-blue-600 dark:bg-blue-700 text-white font-bold py-2 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-800 transition mb-2"
               disabled={loading}
               type="button"
             >
@@ -255,9 +269,4 @@ export default function Login({
       )}
     </div>
   );
-
-  if (role === "admin") content = <Navigate to="/admin" replace />;
-  if (role === "agent") content = <Navigate to="/agent" replace />;
-
-  return content;
 }

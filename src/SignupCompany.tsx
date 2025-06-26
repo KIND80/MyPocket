@@ -105,99 +105,109 @@ export default function SignupCompany() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-12 p-8 bg-white rounded-3xl shadow-lg space-y-6 animate-fade-in-up">
-      <button
-        onClick={() => navigate("/login")}
-        className="absolute top-4 left-4 text-blue-600 hover:underline text-sm"
-        tabIndex={-1}
-      >
-        ← Retour à la connexion
-      </button>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-50">
+      {/* Header façon landing */}
+      <div className="w-full max-w-lg bg-blue-800 rounded-3xl mx-auto py-7 flex items-center justify-center shadow-lg mb-[-60px] z-10">
+        <h1 className="text-2xl md:text-3xl text-white font-extrabold flex items-center gap-2 drop-shadow">
+          🚀 Créer mon espace MyPocket
+        </h1>
+      </div>
 
-      <h1 className="text-3xl font-extrabold text-center text-blue-700">
-        Créer une société & compte admin
-      </h1>
-
-      {message && (
-        <div
-          className={`p-3 rounded text-center font-semibold ${
-            message.type === "error"
-              ? "bg-red-100 text-red-700"
-              : "bg-green-100 text-green-700"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
-      <form onSubmit={handleSignup} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Nom de la société"
-          value={company}
-          onChange={(e) => setCompany(e.target.value)}
-          required
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
-          disabled={loading}
-          autoFocus
-        />
-
-        <input
-          type="text"
-          placeholder="Votre nom/prénom"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
-          disabled={loading}
-        />
-
-        <input
-          type="email"
-          placeholder="Email de l'admin"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
-          disabled={loading}
-        />
-
-        <input
-          type="password"
-          placeholder="Mot de passe (8 caractères minimum)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={8}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
-          disabled={loading}
-          autoComplete="new-password"
-        />
-
-        <input
-          type="password"
-          placeholder="Confirmer le mot de passe"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          minLength={8}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none"
-          disabled={loading}
-          autoComplete="new-password"
-        />
-
+      {/* Card */}
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 pt-12 flex flex-col items-center mt-[-50px] border border-blue-100 relative animate-fade-in-up">
         <button
-          type="submit"
-          disabled={!isFormValid || loading}
-          className={`w-full py-3 rounded-xl font-bold text-white transition ${
-            isFormValid && !loading
-              ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
+          onClick={() => navigate("/login")}
+          className="absolute top-3 left-3 text-blue-400 hover:text-blue-600 text-xs underline transition"
+          tabIndex={-1}
         >
-          {loading ? "Création en cours..." : "Créer mon compte société"}
+          ← Retour à la connexion
         </button>
-      </form>
+
+        <h2 className="text-2xl font-extrabold text-center text-blue-800 mb-4">
+          Créer une société & compte admin
+        </h2>
+
+        {message && (
+          <div
+            className={`p-3 rounded-2xl text-center font-semibold mb-3 ${
+              message.type === "error"
+                ? "bg-red-100 text-red-700"
+                : "bg-green-100 text-green-700"
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
+
+        <form onSubmit={handleSignup} className="w-full space-y-4">
+          <input
+            type="text"
+            placeholder="Nom de la société"
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            required
+            className="w-full px-4 py-3 border border-blue-200 rounded-xl bg-blue-50 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+            disabled={loading}
+            autoFocus
+          />
+
+          <input
+            type="text"
+            placeholder="Votre nom/prénom"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full px-4 py-3 border border-blue-200 rounded-xl bg-blue-50 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+            disabled={loading}
+          />
+
+          <input
+            type="email"
+            placeholder="Email de l'admin"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full px-4 py-3 border border-blue-200 rounded-xl bg-blue-50 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+            disabled={loading}
+          />
+
+          <input
+            type="password"
+            placeholder="Mot de passe (8 caractères minimum)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            className="w-full px-4 py-3 border border-blue-200 rounded-xl bg-blue-50 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+            disabled={loading}
+            autoComplete="new-password"
+          />
+
+          <input
+            type="password"
+            placeholder="Confirmer le mot de passe"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+            className="w-full px-4 py-3 border border-blue-200 rounded-xl bg-blue-50 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+            disabled={loading}
+            autoComplete="new-password"
+          />
+
+          <button
+            type="submit"
+            disabled={!isFormValid || loading}
+            className={`w-full py-3 rounded-2xl font-bold text-white transition text-lg shadow ${
+              isFormValid && !loading
+                ? "bg-blue-700 hover:bg-yellow-400 hover:text-blue-900"
+                : "bg-gray-400 cursor-not-allowed"
+            }`}
+          >
+            {loading ? "Création en cours..." : "Créer mon compte société"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
